@@ -291,9 +291,9 @@ export function BasicShareProfile({
           </div>
         ) : null}
         <div className="basic-share-overlay">
-          <div className="basic-share-brand">
+          <a className="basic-share-brand" href="/" aria-label="mynameis 홈">
             <Image className="wordmark-logo" src="/mynameis-logo.png" alt="mynameis" width={96} height={33} />
-          </div>
+          </a>
           <div className="basic-share-copy">
             {hasLostReportDetails ? <p className="lost-status-message">현재 실종된 상태입니다.</p> : null}
             <div className="basic-share-title">

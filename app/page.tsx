@@ -2,6 +2,7 @@ import { LoggedHome } from "@/components/logged-home";
 import { LandingPreviewCarousel } from "@/components/landing-preview-carousel";
 import { getCurrentUser } from "@/lib/auth/server";
 import Image from "next/image";
+import Link from "next/link";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://mynameis.life";
 
@@ -47,7 +48,9 @@ function GuestHome() {
       <section className="guest-home">
         <NameTagIllustration />
         <div className="guest-copy">
-          <Image className="guest-hero-logo" src="/mynameis-logo.png" alt="mynameis" width={92} height={31} priority />
+          <Link className="guest-hero-logo-link" href="/" aria-label="mynameis 홈">
+            <Image className="guest-hero-logo" src="/mynameis-logo.png" alt="mynameis" width={92} height={31} priority />
+          </Link>
           <h1>맡길 때도,<br />잃어버렸을 때도<br />바로 정보가 닿아요.</h1>
           <p className="guest-lead">반려견 정보를 담은 이름표 링크를 만들고 QR로 공유해요.</p>
           <div className="guest-actions">
@@ -116,7 +119,9 @@ function GuestHome() {
 
       <footer className="guest-footer">
         <div className="landing-inner">
-          <Image src="/mynameis-logo.png" alt="mynameis" width={82} height={28} />
+          <Link href="/" aria-label="mynameis 홈">
+            <Image src="/mynameis-logo.png" alt="mynameis" width={82} height={28} />
+          </Link>
           <nav aria-label="하단 링크">
             <a href="/terms">이용약관</a>
             <a href="/privacy">개인정보처리방침</a>
