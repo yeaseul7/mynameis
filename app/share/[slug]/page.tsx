@@ -3,29 +3,108 @@ import Link from "next/link";
 import Image from "next/image";
 import { headers } from "next/headers";
 import QRCode from "qrcode";
+import { BasicShareProfile } from "@/components/basic-share-profile";
+import type { FoundLocationReport } from "@/components/found-location-reports";
+import { getCurrentUser } from "@/lib/auth/server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getDogByPublicToken } from "@/lib/pets/service";
+import type { GuestbookEntry } from "@/components/guestbook";
+import type { DogPublicLinkType } from "@/lib/pets/types";
+
+type ShareMode = "basic" | "care" | "lost";
+
+function getShareMode(type: DogPublicLinkType): ShareMode {
+  if (type === "LOST") return "lost";
+  if (type === "CARE") return "care";
+  return "basic";
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const isSample = slug === "sample";
   return {
-    title: isSample ? "얼리의 이름표" : `${slug}의 이름표`,
-    description: "반려동물의 돌봄 및 보호자 연락 정보를 확인하세요.",
+    title: "이름표",
+    description: "반려동물의 기본, 돌봄, 실종 정보를 확인하세요.",
     alternates: { canonical: `/share/${slug}` },
-    openGraph: { title: isSample ? "얼리의 이름표 | mynameis" : `${slug}의 이름표 | mynameis`, description: "우리 아이의 돌봄 정보를 확인하세요.", url: `/share/${slug}` },
+    openGraph: { title: "mynameis 이름표", description: "우리 아이의 정보를 확인하세요.", url: `/share/${slug}` },
   };
 }
 
-export default async function SharedProfile({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ mode?: string; view?: string }> }) {
+async function getSiblingLinks(dogId: string) {
+  const supabase = await createServerSupabaseClient();
+  const { data } = await supabase
+    .from("dog_public_links")
+    .select("type,token")
+    .eq("dog_id", dogId)
+    .eq("is_active", true)
+    .is("revoked_at", null)
+    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
+
+  return Object.fromEntries((data ?? []).map((row) => [row.type as DogPublicLinkType, row.token as string])) as Partial<Record<DogPublicLinkType, string>>;
+}
+
+async function getGuestbookEntries(dogId: string, userId?: string): Promise<GuestbookEntry[]> {
+  const supabase = await createServerSupabaseClient();
+  const { data } = await supabase
+    .from("dog_guestbook_entries")
+    .select("id,author_name,message,created_at,author_id")
+    .eq("dog_id", dogId)
+    .is("hidden_at", null)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  return (data ?? []).map(({ author_id, ...entry }) => ({
+    ...entry,
+    is_mine: Boolean(userId && author_id === userId),
+  })) as GuestbookEntry[];
+}
+
+async function getFoundLocationReports(dogId: string, canEdit: boolean): Promise<FoundLocationReport[]> {
+  if (!canEdit) return [];
+  const supabase = await createServerSupabaseClient();
+  const { data } = await supabase
+    .from("dog_found_location_reports")
+    .select("id,latitude,longitude,accuracy_meters,note,created_at")
+    .eq("dog_id", dogId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  return (data ?? []).map((report) => ({
+    id: report.id as string,
+    latitude: Number(report.latitude),
+    longitude: Number(report.longitude),
+    accuracyMeters: report.accuracy_meters == null ? null : Number(report.accuracy_meters),
+    note: report.note as string | null,
+    createdAt: report.created_at as string,
+  }));
+}
+
+export default async function SharedProfile({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ view?: string }> }) {
   const { slug } = await params;
-  const { mode = "care", view } = await searchParams;
+  const { view } = await searchParams;
+  const publicDog = await getDogByPublicToken(await createServerSupabaseClient(), slug);
+
+  if (!publicDog) {
+    return (
+      <div className="shared-page">
+        <section className="shared-profile">
+          <div className="share-brand"><Image className="wordmark-logo" src="/mynameis-logo.png" alt="mynameis" width={96} height={33} /></div>
+          <h1>이름표를 찾을 수 없어요</h1>
+          <p>공유 링크가 만료되었거나 접근할 수 없는 프로필이에요.</p>
+          <Link className="made-with" href="/">made with <b>mynameis</b></Link>
+        </section>
+      </div>
+    );
+  }
 
   if (view === "qr") {
+    const qrMode = publicDog.publicLink.type === "LOST" ? "lost" : "care";
     const requestHeaders = await headers();
     const host = requestHeaders.get("host") ?? "localhost:3004";
     const protocol = requestHeaders.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-    const shareUrl = `${protocol}://${host}/share/${slug}?mode=${mode === "lost" ? "lost" : "care"}`;
+    const shareUrl = `${protocol}://${host}/share/${slug}`;
     const qrImage = await QRCode.toDataURL(shareUrl, { width: 360, margin: 2, errorCorrectionLevel: "H", color: { dark: "#3F392F", light: "#FFFFFF" } });
-    const isLost = mode === "lost";
+    const isLost = qrMode === "lost";
 
     return (
       <div className="shared-page qr-page">
@@ -33,34 +112,20 @@ export default async function SharedProfile({ params, searchParams }: { params: 
           <span>{isLost ? "실종 이름표" : "관리 이름표"}</span>
           <h1>{isLost ? "실종 QR" : "관리 QR"}</h1>
           <p>휴대폰 카메라로 스캔하면 공유 페이지가 열립니다.</p>
-          {/* QR 생성 결과는 data URL이므로 Next Image 최적화 대상에서 제외합니다. */}
           <img src={qrImage} alt={`${isLost ? "실종" : "관리"} 공유 QR 코드`} width="360" height="360" />
-          <Link href={`/share/${slug}?mode=${isLost ? "lost" : "care"}`}>공유 페이지 확인</Link>
+          <Link href={`/share/${slug}`}>공유 페이지 확인</Link>
         </section>
       </div>
     );
   }
 
-  return (
-    <div className="shared-page">
-      <section className="shared-profile">
-        <div className="share-brand"><Image className="wordmark-logo" src="/mynameis-logo.png" alt="mynameis" width={96} height={33} /></div>
-        <div className="large-avatar">🐶</div>
-        <div className="public-badge">🌎 친구들에게 보여주는 이름표</div>
-        <h1>{slug === "sample" ? "안녕! 나는 얼리야" : `안녕! 나는 ${slug}야`}</h1>
-        <p>포메라니안 · 3살 · 여아<br />사람을 좋아하지만 갑자기 안으면 놀랄 수 있어요.</p>
-        <div className="care-note">
-          <strong>📌 꼭 확인해 주세요</strong>
-          <p><span>🥜</span> 닭고기 알레르기가 있어요</p>
-          <p><span>💊</span> 저녁 7시에 영양제를 먹어요</p>
-        </div>
-        <div className="shared-links">
-          <a className="guardian" href="tel:01000000000">보호자에게 연락하기 <span>→</span></a>
-          <a href="mailto:hello@example.com">문자로 발견 장소 보내기 <span>→</span></a>
-        </div>
-        <p className="privacy-note">공개가 허용된 정보만 표시하고 있어요.</p>
-        <Link className="made-with" href="/">made with <b>mynameis</b> 🐣</Link>
-      </section>
-    </div>
-  );
+  const { dog, publicLink } = publicDog;
+  const mode = getShareMode(publicLink.type);
+  const user = await getCurrentUser();
+  const canEdit = user?.id === dog.ownerId;
+  const links = await getSiblingLinks(dog.id);
+  const guestbookEntries = await getGuestbookEntries(dog.id, user?.id);
+  const foundLocationReports = await getFoundLocationReports(dog.id, canEdit);
+
+  return <div className="shared-page basic-shared-page"><BasicShareProfile dog={dog} mode={mode} canEdit={canEdit} links={links} slug={slug} guestbookEntries={guestbookEntries} canWriteGuestbook={Boolean(user)} foundLocationReports={foundLocationReports} kakaoMapKey={process.env.NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY} /></div>;
 }

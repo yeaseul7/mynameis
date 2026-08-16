@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { signInWithProvider } from "@/lib/auth/client";
 
 type Provider = "kakao" | "google";
 
@@ -13,10 +13,7 @@ export function SocialLoginPanel() {
   async function login(provider: Provider) {
     setLoading(provider);
     setMessage("");
-    const { error } = await createBrowserSupabaseClient().auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: `${location.origin}/auth/callback` },
-    });
+    const { error } = await signInWithProvider(provider);
     if (error) {
       setMessage("로그인을 시작하지 못했어요. 잠시 후 다시 시도해 주세요.");
       setLoading(null);

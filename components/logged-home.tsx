@@ -4,8 +4,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { KeyboardEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { LostLocationModal, type LostLocationSnapshot } from "@/components/lost-location-modal";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { getDogsByOwner } from "@/lib/pets/service";
 import type { DogProfile } from "@/lib/dogs";
+import type { DogPublicLinkType } from "@/lib/pets/types";
 
 const friends = [
   { name: "몽이", breed: "말티즈", age: "4살", image: "/pets/mongi.png" },
@@ -13,19 +16,36 @@ const friends = [
   { name: "초코", breed: "푸들", age: "5살", image: "/pets/choco.png" },
 ];
 
-function getAgeLabel(birthDate: string | null) {
-  if (!birthDate) return "나이 미등록";
-  const birth = new Date(`${birthDate}T00:00:00`);
-  const today = new Date();
-  let age = today.getFullYear() - birth.getFullYear();
-  if (today.getMonth() < birth.getMonth() || (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate())) age -= 1;
-  return age <= 0 ? "1살 미만" : `${age}살`;
+const actionIcons = {
+  careLink: "/pet-actions/care-link.png",
+  inviteCode: "/pet-actions/invite-code.png",
+  lostLink: "/pet-actions/lost-link.png",
+  careQr: "/pet-actions/care-qr.png",
+  lostQr: "/pet-actions/lost-qr.png",
+};
+
+type LostLocationAction = "link" | "qr";
+
+async function getPublicLinkToken(dogId: string, type: DogPublicLinkType) {
+  const response = await fetch(`/api/dogs/${dogId}/public-link`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type }),
+  });
+  if (!response.ok) throw new Error("Public link generation failed");
+  const data = await response.json() as { token: string };
+  return data.token;
 }
 
-function getNeuteringLabel(status: DogProfile["neuteringStatus"]) {
-  if (status === "NEUTERED") return "중성화 완료";
-  if (status === "NOT_NEUTERED") return "중성화 전";
-  return "중성화 여부 미등록";
+function PetActionContent({ icon, label }: { icon: string; label: string }) {
+  return (
+    <>
+      <span className="pet-action-icon" aria-hidden>
+        <Image src={icon} alt="" width={34} height={34} />
+      </span>
+      <span>{label}</span>
+    </>
+  );
 }
 
 function EmptyPets() {
@@ -45,54 +65,104 @@ function EmptyPets() {
   );
 }
 
-function PetCard({ pet, index }: { pet: DogProfile; index: number }) {
-  const [copiedMode, setCopiedMode] = useState<"care" | "lost" | "invite" | null>(null);
+function CopyAlert({ message }: { message: string }) {
+  if (!message) return null;
+  return <div className="copy-alert" role="status" aria-live="polite">{message}</div>;
+}
+
+function hasLostLocation(value: LostLocationSnapshot) {
+  const hasLocation = Boolean(value.lostLocationDistrict || value.lostLocationNeighborhood || value.lostLocationDetail || value.lostLocationAddress);
+  return Boolean(value.lostAt && hasLocation);
+}
+
+function getLostSnapshot(pet: DogProfile): LostLocationSnapshot {
+  return {
+    lostAt: pet.careProfile?.lostAt ?? null,
+    lostLocationAddress: pet.careProfile?.lostLocationAddress ?? null,
+    lostLocationDistrict: pet.careProfile?.lostLocationDistrict ?? null,
+    lostLocationNeighborhood: pet.careProfile?.lostLocationNeighborhood ?? null,
+    lostLocationDetail: pet.careProfile?.lostLocationDetail ?? null,
+  };
+}
+
+function PetCard({
+  pet,
+  index,
+  onNotify,
+  onLostLocationNeeded,
+}: {
+  pet: DogProfile;
+  index: number;
+  onNotify: (message: string) => void;
+  onLostLocationNeeded: (pet: DogProfile, action: LostLocationAction) => Promise<void>;
+}) {
   const router = useRouter();
 
-  function openEditPage() {
-    router.push(`/pets/${pet.id}/edit`);
+  async function openProfilePage() {
+    const token = await getPublicLinkToken(pet.id, "PROFILE");
+    router.push(`/share/${token}`);
   }
 
   function handleCardKeyDown(event: KeyboardEvent<HTMLElement>) {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
-      openEditPage();
+      void openProfilePage();
     }
   }
 
   async function copyShareLink(mode: "care" | "lost") {
-    const url = new URL(`/share/${pet.id}`, window.location.origin);
-    url.searchParams.set("mode", mode);
+    if (mode === "lost" && !hasLostLocation(getLostSnapshot(pet))) {
+      await onLostLocationNeeded(pet, "link");
+      return;
+    }
+    const token = await getPublicLinkToken(pet.id, mode === "care" ? "CARE" : "LOST");
+    const url = new URL(`/share/${token}`, window.location.origin);
     await navigator.clipboard.writeText(url.toString());
-    setCopiedMode(mode);
-    window.setTimeout(() => setCopiedMode(null), 1600);
+    onNotify(mode === "care" ? "돌봄 링크를 복사했어요." : "실종 링크를 복사했어요.");
+  }
+
+  async function openCareQr() {
+    const token = await getPublicLinkToken(pet.id, "CARE");
+    router.push(`/share/${token}?view=qr`);
+  }
+
+  async function openLostQr() {
+    if (!hasLostLocation(getLostSnapshot(pet))) {
+      await onLostLocationNeeded(pet, "qr");
+      return;
+    }
+    const token = await getPublicLinkToken(pet.id, "LOST");
+    router.push(`/share/${token}?view=qr`);
   }
 
   async function copyInviteCode() {
-    await navigator.clipboard.writeText(pet.id);
-    setCopiedMode("invite");
-    window.setTimeout(() => setCopiedMode(null), 1600);
+    await navigator.clipboard.writeText(pet.inviteCode ?? pet.id);
+    onNotify("초대코드를 복사했어요.");
+  }
+
+  async function copyRegistrationNumber() {
+    if (!pet.animalRegistrationNo) return;
+    await navigator.clipboard.writeText(pet.animalRegistrationNo);
+    onNotify("동물등록번호를 복사했어요.");
   }
 
   return (
-    <article className="home-pet-card" role="link" tabIndex={0} aria-label={`${pet.name} 정보 수정`} onClick={openEditPage} onKeyDown={handleCardKeyDown}>
+    <article className="home-pet-card" role="link" tabIndex={0} aria-label={`${pet.name} 공개 프로필 보기`} onClick={() => void openProfilePage()} onKeyDown={handleCardKeyDown}>
       <div className="home-pet-photo"><Image src={pet.photos[0]?.url ?? (index === 0 ? "/pets/early.png" : "/pets/bori.png")} alt={`${pet.name} 프로필 사진`} fill sizes="(max-width: 760px) 82vw, 360px" unoptimized={Boolean(pet.photos[0]?.url)} /></div>
       <div className="home-pet-content">
-        <h3>{pet.name}</h3>
-        <dl className="pet-summary">
-          <div><dt>종</dt><dd>{pet.breed}</dd></div>
-          <div><dt>나이</dt><dd>{getAgeLabel(pet.birthDate)}</dd></div>
-          <div><dt>성별</dt><dd>{pet.gender === "FEMALE" ? "여자아이" : "남자아이"}</dd></div>
-          <div><dt>중성화</dt><dd>{getNeuteringLabel(pet.neuteringStatus)}</dd></div>
-        </dl>
-        <div className="profile-progress"><div><span>프로필 완성도</span><b>85%</b></div><progress value="85" max="100">85%</progress></div>
+        <div className="pet-card-copy">
+          <h3>{pet.name}</h3>
+          <p>
+            <span>{pet.animalRegistrationNo ? `동물등록번호 ${pet.animalRegistrationNo}` : "동물등록번호 미등록"}</span>
+            {pet.animalRegistrationNo && <button type="button" onClick={(event) => { event.stopPropagation(); void copyRegistrationNumber(); }}>복사</button>}
+          </p>
+        </div>
         <div className="pet-card-actions" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
-          <button type="button" onClick={() => copyShareLink("care")}>{copiedMode === "care" ? "복사 완료" : "관리 링크 복사"}</button>
-          <button type="button" onClick={() => copyShareLink("lost")}>{copiedMode === "lost" ? "복사 완료" : "실종 링크 복사"}</button>
-          <Link className="qr-action care-qr" href={`/share/${pet.id}?mode=care&view=qr`}>관리 QR 생성</Link>
-          <Link className="qr-action lost-qr" href={`/share/${pet.id}?mode=lost&view=qr`}>실종 QR 생성</Link>
-          <button type="button" onClick={copyInviteCode}>{copiedMode === "invite" ? "복사 완료" : "초대코드 복사"}</button>
-          <Link className="edit-action" href={`/pets/${pet.id}/edit`}>수정하기</Link>
+          <button type="button" onClick={() => copyShareLink("care")}><PetActionContent icon={actionIcons.careLink} label="돌봄 링크" /></button>
+          <button type="button" onClick={() => copyShareLink("lost")}><PetActionContent icon={actionIcons.lostLink} label="실종 링크" /></button>
+          <button type="button" className="qr-action care-qr" onClick={() => void openCareQr()}><PetActionContent icon={actionIcons.careQr} label="관리 QR" /></button>
+          <button type="button" className="qr-action lost-qr" onClick={() => void openLostQr()}><PetActionContent icon={actionIcons.lostQr} label="실종 QR" /></button>
+          <button type="button" onClick={copyInviteCode}><PetActionContent icon={actionIcons.inviteCode} label="초대코드" /></button>
         </div>
       </div>
     </article>
@@ -102,7 +172,7 @@ function PetCard({ pet, index }: { pet: DogProfile; index: number }) {
 function FriendSection({ empty = false }: { empty?: boolean }) {
   return (
     <section className="home-section friend-section" id="friends">
-      <div className="section-heading"><h2>친구들</h2>{!empty && <button type="button">전체보기</button>}</div>
+      <div className="section-heading"><h2>친구들</h2></div>
       {empty ? (
         <div className="friend-empty"><strong>아직 등록한 친구가 없어요!</strong><Link href="/friends/new">＋ 친구 등록하기</Link></div>
       ) : (
@@ -117,31 +187,111 @@ function FriendSection({ empty = false }: { empty?: boolean }) {
 
 export function LoggedHome({ userId, userName }: { userId: string; userName: string }) {
   const [pets, setPets] = useState<DogProfile[] | null>(null);
+  const [loadError, setLoadError] = useState("");
+  const [alertMessage, setAlertMessage] = useState("");
+  const [lostModalRequest, setLostModalRequest] = useState<{ pet: DogProfile; action: LostLocationAction } | null>(null);
+
+  function showCopyAlert(message: string) {
+    setAlertMessage(message);
+    window.setTimeout(() => setAlertMessage(""), 1800);
+  }
+
+  async function continueLostLocationAction(petId: string, action: LostLocationAction) {
+    const token = await getPublicLinkToken(petId, "LOST");
+    const url = new URL(`/share/${token}`, window.location.origin);
+    if (action === "qr") {
+      url.searchParams.set("view", "qr");
+      window.location.href = url.toString();
+      return;
+    }
+    await navigator.clipboard.writeText(url.toString());
+    showCopyAlert("실종 링크를 복사했어요.");
+  }
+
+  function mergePetLostLocation(petId: string, value: LostLocationSnapshot) {
+    setPets((current) => current?.map((pet) => pet.id === petId ? {
+      ...pet,
+      careProfile: {
+        ...(pet.careProfile ?? {
+          takesMedication: null,
+          primaryHospital: null,
+          primaryHospitalAddress: null,
+          primaryHospitalPhone: null,
+          emergencyNote: null,
+          emergencyContact1: "",
+          emergencyContact2: null,
+          lostLocationLat: null,
+          lostLocationLng: null,
+          mealsPerDay: null,
+          marksIndoors: null,
+          fifthVaccineDone: null,
+          daycareExperience: null,
+          hasAllergy: null,
+          handoffMemo: null,
+        }),
+        ...value,
+      },
+    } : pet) ?? null);
+  }
+
+  async function handleLostLocationAction(pet: DogProfile, action: LostLocationAction) {
+    const localSnapshot = getLostSnapshot(pet);
+    if (hasLostLocation(localSnapshot)) {
+      await continueLostLocationAction(pet.id, action);
+      return;
+    }
+
+    const response = await fetch(`/api/dogs/${pet.id}/lost-location`, { cache: "no-store" }).catch(() => null);
+    if (response?.ok) {
+      const latest = await response.json() as LostLocationSnapshot;
+      if (hasLostLocation(latest)) {
+        mergePetLostLocation(pet.id, latest);
+        await continueLostLocationAction(pet.id, action);
+        return;
+      }
+    }
+
+    setLostModalRequest({ pet, action });
+  }
+
+  function updatePetLostLocation(value: LostLocationSnapshot) {
+    if (!lostModalRequest) return;
+    const { pet: targetPet, action } = lostModalRequest;
+    mergePetLostLocation(targetPet.id, value);
+    if (hasLostLocation(value)) void continueLostLocationAction(targetPet.id, action);
+  }
 
   useEffect(() => {
     let active = true;
     async function loadPets() {
-      const { data, error } = await createBrowserSupabaseClient().from("dogs").select("id,name,breed,birth_date,weight_kg,gender,neutering_status,animal_registration_no,dog_images(image_url,sort_order,is_primary)").eq("owner_id", userId).order("created_at", { ascending: true });
+      const supabase = createBrowserSupabaseClient();
+      const data = await getDogsByOwner(supabase, userId).catch((error) => {
+        console.error(error);
+        setLoadError("아이 정보를 불러오지 못했어요. DB 스키마와 권한을 확인해 주세요.");
+        return [];
+      });
       if (!active) return;
-      if (error) return setPets([]);
-      setPets((data ?? []).map((dog) => ({ id: dog.id, name: dog.name, breed: dog.breed, birthDate: dog.birth_date, weightKg: dog.weight_kg == null ? null : Number(dog.weight_kg), gender: dog.gender as DogProfile["gender"], neuteringStatus: dog.neutering_status as DogProfile["neuteringStatus"], animalRegistrationNo: dog.animal_registration_no, photos: [...(dog.dog_images ?? [])].filter((photo) => Boolean(photo.image_url)).sort((a, b) => a.sort_order - b.sort_order).map((photo) => ({ url: photo.image_url as string, sortOrder: photo.sort_order, isPrimary: photo.is_primary })) })));
+      setPets(data);
     }
     loadPets();
     return () => { active = false; };
   }, [userId]);
 
   if (pets === null) return <div className="dashboard-loading">이름표를 불러오고 있어요.</div>;
+  if (loadError) return <div className="dashboard-loading">{loadError}</div>;
 
   return (
     <div className="logged-home">
+      <CopyAlert message={alertMessage} />
       <section className="home-greeting"><h1>{userName}님, 오늘도 반가워요 <span aria-hidden>👋</span></h1><p>우리 아이들의 프로필을 확인해보세요.</p></section>
       {pets.length === 0 ? <EmptyPets /> : <>
         <section className="home-section my-pets-section" id="my-pets">
-          <div className="section-heading"><h2>내 새꾸 <span aria-hidden>🐾</span></h2><Link href="/pets/new">＋ 새꾸 추가</Link></div>
-          <div className="pet-card-scroll">{pets.map((pet, index) => <PetCard key={pet.id} pet={pet} index={index} />)}</div>
+          <div className="section-heading"><h2>내 새꾸 <span aria-hidden>🐾</span></h2><Link className="add-pet-cta" href="/pets/new">＋ 새꾸 추가</Link></div>
+          <div className="pet-card-scroll">{pets.map((pet, index) => <PetCard key={pet.id} pet={pet} index={index} onNotify={showCopyAlert} onLostLocationNeeded={handleLostLocationAction} />)}</div>
         </section>
         <FriendSection />
       </>}
+      {lostModalRequest ? <LostLocationModal dogId={lostModalRequest.pet.id} initial={getLostSnapshot(lostModalRequest.pet)} onClose={() => setLostModalRequest(null)} onSaved={updatePetLostLocation} /> : null}
     </div>
   );
 }

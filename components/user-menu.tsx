@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { signOut } from "@/lib/auth/client";
 
 export function UserMenu({ email }: { email: string }) {
   const [loading, setLoading] = useState(false);
@@ -10,7 +10,7 @@ export function UserMenu({ email }: { email: string }) {
 
   async function logout() {
     setLoading(true);
-    await createBrowserSupabaseClient().auth.signOut();
+    await signOut();
     router.push("/");
     router.refresh();
   }

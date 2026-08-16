@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { signInWithEmail, signInWithProvider, signUpWithEmail } from "@/lib/auth/client";
 
 type Provider = "kakao" | "google";
 
@@ -16,10 +16,7 @@ export function LoginForm({ variant = "card" }: { variant?: "card" | "inline" })
 
   async function socialLogin(provider: Provider) {
     setLoading(provider); setMessage("");
-    const { error } = await createBrowserSupabaseClient().auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: `${location.origin}/auth/callback` },
-    });
+    const { error } = await signInWithProvider(provider);
     if (error) { setMessage(error.message); setLoading(null); }
   }
 
@@ -38,10 +35,9 @@ export function LoginForm({ variant = "card" }: { variant?: "card" | "inline" })
       setLoading(null);
       return;
     }
-    const supabase = createBrowserSupabaseClient();
     const result = mode === "login"
-      ? await supabase.auth.signInWithPassword({ email, password })
-      : await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${location.origin}/auth/callback` } });
+      ? await signInWithEmail(email, password)
+      : await signUpWithEmail(email, password);
     if (result.error) setMessage(result.error.message);
     else if (mode === "signup" && !result.data.session) setMessage("인증 메일을 확인해 주세요.");
     else { router.push("/"); router.refresh(); }

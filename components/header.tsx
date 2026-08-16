@@ -1,11 +1,10 @@
 import Link from "next/link";
 import Image from "next/image";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth/server";
 import { UserMenu } from "./user-menu";
 
 export async function Header() {
-  const supabase = await createServerSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   return (
     <header className="site-header">
