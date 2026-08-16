@@ -84,7 +84,7 @@ export function BasicShareProfile({
   });
   const activeTab = mode === "lost" ? "lost" : "care";
   const lostLocationLabel = [lostSnapshot.lostLocationDistrict, lostSnapshot.lostLocationNeighborhood, lostSnapshot.lostLocationDetail].filter(Boolean).join(" ") || lostSnapshot.lostLocationAddress || "미입력";
-  const hasLostInfo = Boolean(lostSnapshot.lostAt && (lostSnapshot.lostLocationDistrict || lostSnapshot.lostLocationNeighborhood || lostSnapshot.lostLocationDetail || lostSnapshot.lostLocationAddress));
+  const hasLostReportDetails = Boolean(lostSnapshot.lostAt || lostSnapshot.lostLocationDistrict || lostSnapshot.lostLocationNeighborhood || lostSnapshot.lostLocationDetail || lostSnapshot.lostLocationAddress);
   const primaryContact = care?.emergencyContact1?.replace(/[^\d+]/g, "") ?? "";
   const instagramUsername = normalizeInstagramUsername(dog.instagramUsername);
   const instagramUrl = instagramUsername ? `https://www.instagram.com/${encodeURIComponent(instagramUsername)}/` : "";
@@ -155,10 +155,11 @@ export function BasicShareProfile({
 
   return (
     <section className={`basic-share-profile${mode === "lost" ? " has-lost-remote" : ""}`}>
-      <div className="basic-share-topbar">
-        <div className="share-brand basic-share-brand"><Image className="wordmark-logo" src="/mynameis-logo.png" alt="mynameis" width={96} height={33} /></div>
-        {canEdit && !hasLostInfo ? <button className="lost-place-button" type="button" onClick={() => setLostModalOpen(true)}>실종등록</button> : null}
-      </div>
+      {canEdit && !hasLostReportDetails ? (
+        <div className="basic-share-topbar">
+          <button className="lost-place-button" type="button" onClick={() => setLostModalOpen(true)}>실종등록</button>
+        </div>
+      ) : null}
       <div className="basic-share-hero">
         {activePhoto ? (
           <>
@@ -177,7 +178,7 @@ export function BasicShareProfile({
         <div className="basic-share-overlay">
           <div aria-hidden />
           <div className="basic-share-copy">
-            {hasLostInfo ? <p className="lost-status-message">현재 실종된 상태입니다.</p> : null}
+            {activeTab === "lost" ? <p className="lost-status-message">현재 실종된 상태입니다.</p> : null}
             <div className="basic-share-title">
               <h1>{dog.name}</h1>
               <b>{dog.breed}</b>
@@ -211,23 +212,17 @@ export function BasicShareProfile({
           {activeTab === "lost" ? (
             <>
               <h2>실종 정보</h2>
-              {canEdit && hasLostInfo ? <button className="end-lost-report-button" type="button" onClick={() => void endLostReport()}>실종 신고 종료</button> : null}
+              {canEdit && hasLostReportDetails ? <button className="end-lost-report-button" type="button" onClick={() => void endLostReport()}>실종 신고 종료</button> : null}
               {canEdit && foundLocationReports.length > 0 ? <FoundLocationReports reports={foundLocationReports} kakaoKey={kakaoMapKey} /> : null}
-              {hasLostInfo ? (
-                <>
-                  {canEdit ? <dl><dt>긴급 연락처1</dt><dd>{care?.emergencyContact1 || "미입력"}</dd></dl> : null}
-                  {canEdit ? <dl><dt>긴급 연락처2</dt><dd>{care?.emergencyContact2 || "미입력"}</dd></dl> : null}
-                  <dl><dt>실종 시간</dt><dd>{getDateTimeLabel(lostSnapshot.lostAt)}</dd></dl>
-                  <dl><dt>실종지</dt><dd>{lostLocationLabel}</dd></dl>
-                  <dl><dt>복용약 여부</dt><dd>{getYesNo(care?.takesMedication, "있어요", "없어요")}</dd></dl>
-                  <dl><dt>주치 병원</dt><dd>{care?.primaryHospital || "미입력"}</dd></dl>
-                  {care?.primaryHospitalAddress ? <dl><dt>병원 주소</dt><dd>{care.primaryHospitalAddress}</dd></dl> : null}
-                  {care?.primaryHospitalPhone ? <dl><dt>병원 전화</dt><dd>{care.primaryHospitalPhone}</dd></dl> : null}
-                  <dl><dt>특이사항</dt><dd>{care?.emergencyNote || "미입력"}</dd></dl>
-                </>
-              ) : (
-                <p className="basic-tab-empty">등록된 실종 정보가 없어요.</p>
-              )}
+              <dl><dt>긴급 연락처1</dt><dd>{care?.emergencyContact1 || "미입력"}</dd></dl>
+              <dl><dt>긴급 연락처2</dt><dd>{care?.emergencyContact2 || "미입력"}</dd></dl>
+              <dl><dt>실종 시간</dt><dd>{getDateTimeLabel(lostSnapshot.lostAt)}</dd></dl>
+              <dl><dt>실종지</dt><dd>{lostLocationLabel}</dd></dl>
+              <dl><dt>복용약 여부</dt><dd>{getYesNo(care?.takesMedication, "있어요", "없어요")}</dd></dl>
+              <dl><dt>주치 병원</dt><dd>{care?.primaryHospital || "미입력"}</dd></dl>
+              {care?.primaryHospitalAddress ? <dl><dt>병원 주소</dt><dd>{care.primaryHospitalAddress}</dd></dl> : null}
+              {care?.primaryHospitalPhone ? <dl><dt>병원 전화</dt><dd>{care.primaryHospitalPhone}</dd></dl> : null}
+              <dl><dt>특이사항</dt><dd>{care?.emergencyNote || "미입력"}</dd></dl>
             </>
           ) : (
             <>

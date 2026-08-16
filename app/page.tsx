@@ -1,4 +1,5 @@
 import { LoggedHome } from "@/components/logged-home";
+import { LandingPreviewCarousel } from "@/components/landing-preview-carousel";
 import { getCurrentUser } from "@/lib/auth/server";
 import Image from "next/image";
 
@@ -39,24 +40,24 @@ function GuestHome() {
           <Image className="problem-moment-icon" src="/problem-moment-icon.png" alt="" width={240} height={240} />
           <div className="insight-grid">
             <article>
-              <span>01</span>
+              <Image className="problem-card-icon" src="/problem-icon-handoff.png" alt="" width={120} height={120} />
               <h3>맡길 때마다 반복되는 정보 전달</h3>
-              <p>호텔, 유치원, 병원, 지인에게 맡길 때마다 성격, 알레르기, 식사, 산책 습관을 다시 설명해야 해요.</p>
+              <p>호텔, 유치원, 병원, 지인에게 맡길 때마다<br />성격, 알레르기, 식사, 산책 습관을 다시 설명해야 해요.</p>
             </article>
             <article>
-              <span>02</span>
+              <Image className="problem-card-icon" src="/problem-icon-tag.png" alt="" width={120} height={120} />
               <h3>이름표와 내장칩 사이의 정보 공백</h3>
-              <p>목걸이에는 전화번호 정도만 적을 수 있고, 내장칩은 발견자가 바로 확인하기 어려워요.</p>
+              <p>목걸이에는 전화번호 정도만 적을 수 있고,<br />내장칩은 발견자가 바로 확인하기 어려워요.</p>
             </article>
             <article>
-              <span>03</span>
+              <Image className="problem-card-icon" src="/problem-icon-lost.png" alt="" width={120} height={120} />
               <h3>실종 순간, 새로 만들 시간이 없음</h3>
               <p>잃어버린 뒤에 사진을 찾고 특징과 연락처를 정리해 실종 글을 만들기엔 너무 늦어요.</p>
             </article>
             <article>
-              <span>04</span>
+              <Image className="problem-card-icon" src="/problem-icon-map.png" alt="" width={120} height={120} />
               <h3>제보가 여러 곳에 흩어짐</h3>
-              <p>전화, 문자, SNS 댓글로 들어오는 목격 정보가 흩어져 이동 경로를 파악하기 어려워요.</p>
+              <p>전화, 문자, SNS 댓글로 들어오는 목격 정보가 흩어져<br />이동 경로를 파악하기 어려워요.</p>
             </article>
           </div>
         </div>
@@ -64,17 +65,13 @@ function GuestHome() {
 
       <section className="landing-band solution-band" aria-labelledby="solution-title">
         <div className="landing-inner split-section">
-          <div>
-            <p className="section-kicker">Solution</p>
-            <h2 id="solution-title">돌봄용과 실종용 이름표 링크를 따로 만들어요.</h2>
-            <p>공개할 정보만 골라 담고, QR로 저장하거나 목걸이와 스티커에 붙여 공유할 수 있어요.</p>
+          <div className="solution-keyring-visual">
+            <Image className="solution-keyring-image" src="/landing-keyring-qr.png" alt="QR 키링 예시" width={520} height={520} />
+            <Image className="solution-sticker-image" src="/landing-sticker-qr.png" alt="QR 스티커 예시" width={1280} height={1280} />
           </div>
-          <div className="solution-list">
-            <span>사진 최대 7장</span>
-            <span>성격과 주의사항</span>
-            <span>동물등록번호</span>
-            <span>건강 정보</span>
-            <span>보호자 연락처</span>
+          <div>
+            <h2 id="solution-title">돌봄용 링크와 QR 그리고<br />실종용 링크와 QR을<br />쉽게 만들고 공유해요</h2>
+            <p>QR로 저장해서 공유하거나 스티커로 제작하거나 키링으로 제작할 수 있어요.</p>
           </div>
         </div>
       </section>
@@ -82,38 +79,30 @@ function GuestHome() {
       <section className="landing-band preview-band" id="preview" aria-labelledby="preview-title">
         <div className="landing-inner preview-layout">
           <div>
-            <p className="section-kicker">Preview</p>
-            <h2 id="preview-title">공유 페이지와 QR을 함께 확인해요.</h2>
-            <p>산책 중 목줄 QR, 펫시터 돌봄 정보 공유, 유치원 친구 등록, 실종 시 바로 연락 유도까지 한 링크로 준비해요.</p>
+            <h2 id="preview-title">상황에 맞는 공유 페이지를 준비해요.</h2>
+            <p>기본 프로필부터 돌봄 정보, 실종 정보까지 필요한 내용만 골라 QR과 링크로 공유할 수 있어요.</p>
           </div>
-          <div className="preview-stack" aria-label="이름표 공유 화면 예시">
-            <article className="share-preview-card">
-              <div className="preview-photo">초코</div>
-              <b>초코를 찾고 있어요</b>
-              <p>낯선 사람을 무서워해요. 천천히 다가와 주세요.</p>
-              <span>보호자에게 연락하기</span>
-            </article>
-            <div className="qr-preview-card">
-              <div className="qr-dots" aria-hidden />
-              <strong>QR 이름표</strong>
-            </div>
-          </div>
+          <LandingPreviewCarousel />
         </div>
       </section>
 
-      <section className="landing-band trust-band" aria-labelledby="trust-title">
+      <section className="landing-band trust-band">
         <div className="landing-inner">
-          <p className="section-kicker">Trust</p>
-          <h2 id="trust-title">필요한 정보만, 필요한 상황에서만 보여줘요.</h2>
-          <div className="trust-grid">
-            <p>공개할 정보만 선택할 수 있어요.</p>
-            <p>돌봄용/실종용 링크를 따로 만들 수 있어요.</p>
-            <p>보호자 연락처는 필요한 상황에서만 보여줄 수 있어요.</p>
-            <p>언제든 이름표 링크를 수정하거나 비공개로 바꿀 수 있어요.</p>
-          </div>
           <a className="final-cta" href="/login">무료로 우리 아이 이름표 만들기</a>
         </div>
       </section>
+
+      <footer className="guest-footer">
+        <div className="landing-inner">
+          <Image src="/mynameis-logo.png" alt="mynameis" width={82} height={28} />
+          <nav aria-label="하단 링크">
+            <a href="/terms">이용약관</a>
+            <a href="/privacy">개인정보처리방침</a>
+            <a href="mailto:sientobiz@gmail.com">문의하기</a>
+          </nav>
+          <p>© mynameis. All rights reserved.</p>
+        </div>
+      </footer>
     </main>
   );
 }

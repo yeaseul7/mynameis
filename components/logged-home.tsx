@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { KeyboardEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LostLocationModal, type LostLocationSnapshot } from "@/components/lost-location-modal";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { getDogsByOwner } from "@/lib/pets/service";
 import type { DogProfile } from "@/lib/dogs";
@@ -17,8 +16,6 @@ const actionIcons = {
   careQr: "/pet-actions/care-qr.png",
   lostQr: "/pet-actions/lost-qr.png",
 };
-
-type LostLocationAction = "link" | "qr";
 
 async function getPublicLinkToken(dogId: string, type: DogPublicLinkType) {
   const response = await fetch(`/api/dogs/${dogId}/public-link`, {
@@ -64,31 +61,14 @@ function CopyAlert({ message }: { message: string }) {
   return <div className="copy-alert" role="status" aria-live="polite">{message}</div>;
 }
 
-function hasLostLocation(value: LostLocationSnapshot) {
-  const hasLocation = Boolean(value.lostLocationDistrict || value.lostLocationNeighborhood || value.lostLocationDetail || value.lostLocationAddress);
-  return Boolean(value.lostAt && hasLocation);
-}
-
-function getLostSnapshot(pet: DogProfile): LostLocationSnapshot {
-  return {
-    lostAt: pet.careProfile?.lostAt ?? null,
-    lostLocationAddress: pet.careProfile?.lostLocationAddress ?? null,
-    lostLocationDistrict: pet.careProfile?.lostLocationDistrict ?? null,
-    lostLocationNeighborhood: pet.careProfile?.lostLocationNeighborhood ?? null,
-    lostLocationDetail: pet.careProfile?.lostLocationDetail ?? null,
-  };
-}
-
 function PetCard({
   pet,
   index,
   onNotify,
-  onLostLocationNeeded,
 }: {
   pet: DogProfile;
   index: number;
   onNotify: (message: string) => void;
-  onLostLocationNeeded: (pet: DogProfile, action: LostLocationAction) => Promise<void>;
 }) {
   const router = useRouter();
 
@@ -105,10 +85,6 @@ function PetCard({
   }
 
   async function copyShareLink(mode: "care" | "lost") {
-    if (mode === "lost" && !hasLostLocation(getLostSnapshot(pet))) {
-      await onLostLocationNeeded(pet, "link");
-      return;
-    }
     const token = await getPublicLinkToken(pet.id, mode === "care" ? "CARE" : "LOST");
     const url = new URL(`/share/${token}`, window.location.origin);
     await navigator.clipboard.writeText(url.toString());
@@ -121,10 +97,6 @@ function PetCard({
   }
 
   async function openLostQr() {
-    if (!hasLostLocation(getLostSnapshot(pet))) {
-      await onLostLocationNeeded(pet, "qr");
-      return;
-    }
     const token = await getPublicLinkToken(pet.id, "LOST");
     router.push(`/share/${token}?view=qr`);
   }
@@ -202,83 +174,10 @@ export function LoggedHome({ userId, userName }: { userId: string; userName: str
   const [pets, setPets] = useState<DogProfile[] | null>(null);
   const [loadError, setLoadError] = useState("");
   const [alertMessage, setAlertMessage] = useState("");
-  const [lostModalRequest, setLostModalRequest] = useState<{ pet: DogProfile; action: LostLocationAction } | null>(null);
 
   function showCopyAlert(message: string) {
     setAlertMessage(message);
     window.setTimeout(() => setAlertMessage(""), 1800);
-  }
-
-  async function continueLostLocationAction(petId: string, action: LostLocationAction) {
-    const token = await getPublicLinkToken(petId, "LOST");
-    const url = new URL(`/share/${token}`, window.location.origin);
-    if (action === "qr") {
-      url.searchParams.set("view", "qr");
-      window.location.href = url.toString();
-      return;
-    }
-    await navigator.clipboard.writeText(url.toString());
-    showCopyAlert("실종 링크를 복사했어요.");
-  }
-
-  function mergePetLostLocation(petId: string, value: LostLocationSnapshot) {
-    setPets((current) => current?.map((pet) => pet.id === petId ? {
-      ...pet,
-      careProfile: {
-        ...(pet.careProfile ?? {
-          takesMedication: null,
-          primaryHospital: null,
-          primaryHospitalAddress: null,
-          primaryHospitalPhone: null,
-          emergencyNote: null,
-          emergencyContact1: "",
-          emergencyContact2: null,
-          lostLocationLat: null,
-          lostLocationLng: null,
-          mealsPerDay: null,
-          marksIndoors: null,
-          fifthVaccineDone: null,
-          daycareExperience: null,
-          hasAllergy: null,
-          handoffMemo: null,
-        }),
-        ...value,
-      },
-    } : pet) ?? null);
-  }
-
-  async function handleLostLocationAction(pet: DogProfile, action: LostLocationAction) {
-    const localSnapshot = getLostSnapshot(pet);
-    if (hasLostLocation(localSnapshot)) {
-      await continueLostLocationAction(pet.id, action);
-      return;
-    }
-
-    const response = await fetch(`/api/dogs/${pet.id}/lost-location`, { cache: "no-store" }).catch(() => null);
-    if (response?.ok) {
-      const latest = await response.json() as LostLocationSnapshot;
-      if (hasLostLocation(latest)) {
-        mergePetLostLocation(pet.id, latest);
-        await continueLostLocationAction(pet.id, action);
-        return;
-      }
-    }
-
-    setLostModalRequest({ pet, action });
-  }
-
-  function updatePetLostLocation(value: LostLocationSnapshot) {
-    if (!lostModalRequest) return;
-    const { pet: targetPet, action } = lostModalRequest;
-    mergePetLostLocation(targetPet.id, value);
-    if (hasLostLocation(value)) void continueLostLocationAction(targetPet.id, action);
-  }
-
-  function skipLostLocationRegistration() {
-    if (!lostModalRequest) return;
-    const { pet: targetPet, action } = lostModalRequest;
-    setLostModalRequest(null);
-    void continueLostLocationAction(targetPet.id, action);
   }
 
   useEffect(() => {
@@ -307,11 +206,10 @@ export function LoggedHome({ userId, userName }: { userId: string; userName: str
       {pets.length === 0 ? <EmptyPets /> : <>
         <section className="home-section my-pets-section" id="my-pets">
           <div className="section-heading"><h2>내 새꾸 <span aria-hidden>🐾</span></h2><Link className="add-pet-cta" href="/pets/new">＋ 새꾸 추가</Link></div>
-          <div className="pet-card-scroll">{pets.map((pet, index) => <PetCard key={pet.id} pet={pet} index={index} onNotify={showCopyAlert} onLostLocationNeeded={handleLostLocationAction} />)}</div>
+          <div className="pet-card-scroll">{pets.map((pet, index) => <PetCard key={pet.id} pet={pet} index={index} onNotify={showCopyAlert} />)}</div>
         </section>
         <FriendSection />
       </>}
-      {lostModalRequest ? <LostLocationModal dogId={lostModalRequest.pet.id} initial={getLostSnapshot(lostModalRequest.pet)} onClose={() => setLostModalRequest(null)} onSaved={updatePetLostLocation} onSkip={skipLostLocationRegistration} /> : null}
     </div>
   );
 }
