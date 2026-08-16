@@ -144,7 +144,7 @@ function PetCard({
     <article className="home-pet-card" role="link" tabIndex={0} aria-label={`${pet.name} 공개 프로필 보기`} onClick={() => void openProfilePage()} onKeyDown={handleCardKeyDown}>
       <div className="home-pet-photo">
         {pet.photos[0]?.url ? (
-          <Image src={pet.photos[0].url} alt={`${pet.name} 프로필 사진`} fill sizes="(max-width: 760px) 82vw, 360px" unoptimized />
+          <Image src={pet.photos[0].url} alt={`${pet.name} 프로필 사진`} fill sizes="(max-width: 760px) 82vw, 360px" quality={68} />
         ) : (
           <div className="home-pet-photo-empty" aria-hidden>{pet.name.slice(0, 1)}</div>
         )}
@@ -274,6 +274,13 @@ export function LoggedHome({ userId, userName }: { userId: string; userName: str
     if (hasLostLocation(value)) void continueLostLocationAction(targetPet.id, action);
   }
 
+  function skipLostLocationRegistration() {
+    if (!lostModalRequest) return;
+    const { pet: targetPet, action } = lostModalRequest;
+    setLostModalRequest(null);
+    void continueLostLocationAction(targetPet.id, action);
+  }
+
   useEffect(() => {
     let active = true;
     async function loadPets() {
@@ -304,7 +311,7 @@ export function LoggedHome({ userId, userName }: { userId: string; userName: str
         </section>
         <FriendSection />
       </>}
-      {lostModalRequest ? <LostLocationModal dogId={lostModalRequest.pet.id} initial={getLostSnapshot(lostModalRequest.pet)} onClose={() => setLostModalRequest(null)} onSaved={updatePetLostLocation} /> : null}
+      {lostModalRequest ? <LostLocationModal dogId={lostModalRequest.pet.id} initial={getLostSnapshot(lostModalRequest.pet)} onClose={() => setLostModalRequest(null)} onSaved={updatePetLostLocation} onSkip={skipLostLocationRegistration} /> : null}
     </div>
   );
 }

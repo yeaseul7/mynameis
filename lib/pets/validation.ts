@@ -16,8 +16,12 @@ export function normalizeRegistrationNumber(value: FormDataEntryValue | null) {
   return String(value ?? "").replace(/\D/g, "");
 }
 
-export function normalizeInstagramUsername(value: FormDataEntryValue | null) {
-  return String(value ?? "").trim().replace(/^@+/, "");
+export function normalizeInstagramUsername(value: FormDataEntryValue | string | null | undefined) {
+  const rawValue = String(value ?? "").trim();
+  if (!rawValue) return "";
+  const withoutAt = rawValue.replace(/^@+/, "");
+  const match = withoutAt.match(/^(?:https?:\/\/)?(?:www\.)?instagram\.com\/@?([^/?#\s]+)/i);
+  return (match?.[1] ?? withoutAt).replace(/^@+/, "").replace(/[/?#].*$/, "").replace(/\/+$/, "");
 }
 
 export function validateInstagramUsername(value: string) {

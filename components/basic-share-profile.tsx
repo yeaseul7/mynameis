@@ -7,6 +7,7 @@ import { FoundLocationReports, type FoundLocationReport } from "@/components/fou
 import { Guestbook, type GuestbookEntry } from "@/components/guestbook";
 import { LostLocationModal, type LostLocationSnapshot } from "@/components/lost-location-modal";
 import type { DogProfile } from "@/lib/dogs";
+import { normalizeInstagramUsername } from "@/lib/pets/validation";
 import type { DogPublicLinkType } from "@/lib/pets/types";
 
 type ShareMode = "basic" | "care" | "lost";
@@ -85,7 +86,8 @@ export function BasicShareProfile({
   const lostLocationLabel = [lostSnapshot.lostLocationDistrict, lostSnapshot.lostLocationNeighborhood, lostSnapshot.lostLocationDetail].filter(Boolean).join(" ") || lostSnapshot.lostLocationAddress || "미입력";
   const hasLostInfo = Boolean(lostSnapshot.lostAt && (lostSnapshot.lostLocationDistrict || lostSnapshot.lostLocationNeighborhood || lostSnapshot.lostLocationDetail || lostSnapshot.lostLocationAddress));
   const primaryContact = care?.emergencyContact1?.replace(/[^\d+]/g, "") ?? "";
-  const instagramUrl = dog.instagramUsername ? `https://www.instagram.com/${dog.instagramUsername}` : "";
+  const instagramUsername = normalizeInstagramUsername(dog.instagramUsername);
+  const instagramUrl = instagramUsername ? `https://www.instagram.com/${encodeURIComponent(instagramUsername)}/` : "";
   const profileStats = [
     { label: "나이", value: getAgeLabel(dog.birthDate) || "미입력" },
     { label: "성별", value: getGenderLabel(dog.gender) },
@@ -160,8 +162,8 @@ export function BasicShareProfile({
       <div className="basic-share-hero">
         {activePhoto ? (
           <>
-            <Image className="basic-share-bg" src={activePhoto} alt="" fill sizes="100vw" unoptimized aria-hidden />
-            <Image className="basic-share-main-photo" src={activePhoto} alt={`${dog.name} 선택 사진`} fill sizes="(max-width: 760px) 100vw, 560px" unoptimized priority />
+            <Image className="basic-share-bg" src={activePhoto} alt="" fill sizes="100vw" quality={25} aria-hidden />
+            <Image className="basic-share-main-photo" src={activePhoto} alt={`${dog.name} 선택 사진`} fill sizes="(max-width: 760px) 100vw, 560px" quality={78} priority />
           </>
         ) : (
           <div className="basic-share-empty-photo">강아지</div>
@@ -180,10 +182,10 @@ export function BasicShareProfile({
               <h1>{dog.name}</h1>
               <b>{dog.breed}</b>
             </div>
-            {dog.instagramUsername ? (
-              <a className="basic-instagram-link" href={`https://www.instagram.com/${dog.instagramUsername}`} target="_blank" rel="noopener noreferrer">
+            {instagramUsername ? (
+              <a className="basic-instagram-link" href={instagramUrl} target="_blank" rel="noopener noreferrer">
                 <Image src="/social/instagram-icon.png" alt="" width={18} height={18} />
-                <span>@{dog.instagramUsername}</span>
+                <span>@{instagramUsername}</span>
               </a>
             ) : null}
             <div className="basic-share-stats">
@@ -245,7 +247,7 @@ export function BasicShareProfile({
               const photoIndex = index + 1;
               return (
                 <button className="basic-photo-card" type="button" key={photo.id ?? photo.url} aria-pressed={activePhotoIndex === photoIndex} onClick={() => setActivePhotoIndex(photoIndex)}>
-                  <Image src={photo.url} alt={`${dog.name} 등록 사진 ${photoIndex}`} fill sizes="(max-width: 760px) 45vw, 260px" unoptimized />
+                  <Image src={photo.url} alt={`${dog.name} 등록 사진 ${photoIndex}`} fill sizes="(max-width: 760px) 45vw, 260px" quality={58} />
                 </button>
               );
             })}

@@ -36,11 +36,13 @@ export function LostLocationModal({
   initial,
   onClose,
   onSaved,
+  onSkip,
 }: {
   dogId: string;
   initial: LostLocationSnapshot;
   onClose: () => void;
   onSaved: (value: LostLocationSnapshot) => void;
+  onSkip?: () => void;
 }) {
   const savedDistrict = parseSavedDistrict(initial.lostLocationDistrict);
   const [lostYear, setLostYear] = useState(() => initial.lostAt?.slice(0, 4) ?? getTodayParts().year);
@@ -103,8 +105,9 @@ export function LostLocationModal({
           <label>읍/면/동<input value={lostNeighborhood} onChange={(event) => setLostNeighborhood(event.target.value)} placeholder="예: 역삼동" /></label>
           <label>자세한 위치<textarea rows={3} value={lostDetail} onChange={(event) => setLostDetail(event.target.value)} placeholder="예: 역삼역 3번 출구 근처, 노란 벤치 앞" /></label>
         </div>
-        <div className="lost-modal-actions">
+        <div className={`lost-modal-actions${onSkip ? " has-skip" : ""}`}>
           <button type="button" onClick={onClose}>취소</button>
+          {onSkip ? <button type="button" onClick={onSkip}>건너뛰기</button> : null}
           <button type="submit" disabled={saving}>{saving ? "저장 중..." : "저장"}</button>
         </div>
       </form>

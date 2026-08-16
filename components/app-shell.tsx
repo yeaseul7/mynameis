@@ -8,12 +8,13 @@ export function AppShell({ header, children }: { header: ReactNode; children: Re
   const pathname = usePathname();
   const isShared = pathname.startsWith("/share/");
   const isLogin = pathname === "/login";
+  const isHome = pathname === "/";
 
   return (
     <>
       {!isShared && !isLogin && header}
       <main className={isShared ? "public-shell" : "app-shell"}>{children}</main>
-      {!isShared && !isLogin && <BottomNavigation />}
+      {!isShared && !isLogin && !isHome && <BottomNavigation />}
     </>
   );
 }
