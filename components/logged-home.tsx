@@ -5,7 +5,7 @@ import Link from "next/link";
 import { KeyboardEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { getDogsByOwner, getFriendDogsByOwner } from "@/lib/pets/service";
+import { getDogsByOwner } from "@/lib/pets/service";
 import type { DogProfile } from "@/lib/dogs";
 import type { DogPublicLinkType } from "@/lib/pets/types";
 
@@ -24,6 +24,24 @@ async function getPublicLinkToken(dogId: string, type: DogPublicLinkType) {
     body: JSON.stringify({ type }),
   });
   if (!response.ok) throw new Error("Public link generation failed");
+  const data = await response.json() as { token: string };
+  return data.token;
+}
+
+async function getFriendDogs() {
+  const response = await fetch("/api/friends");
+  if (!response.ok) throw new Error("Friend list fetch failed");
+  const data = await response.json() as { friends: DogProfile[] };
+  return data.friends;
+}
+
+async function getFriendProfileToken(dogId: string) {
+  const response = await fetch("/api/friends", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ dogId }),
+  });
+  if (!response.ok) throw new Error("Friend profile link fetch failed");
   const data = await response.json() as { token: string };
   return data.token;
 }
@@ -196,7 +214,22 @@ function PetCard({
   );
 }
 
-function FriendSection({ empty = false, friends = [] }: { empty?: boolean; friends?: DogProfile[] }) {
+function FriendSection({ empty = false, friends = [], onNotify }: { empty?: boolean; friends?: DogProfile[]; onNotify?: (message: string) => void }) {
+  const router = useRouter();
+  const [openingFriendId, setOpeningFriendId] = useState("");
+
+  async function openFriend(friend: DogProfile) {
+    if (openingFriendId) return;
+    setOpeningFriendId(friend.id);
+    try {
+      const token = await getFriendProfileToken(friend.id);
+      router.push(`/share/${token}`);
+    } catch {
+      setOpeningFriendId("");
+      onNotify?.("친구 이름표를 준비하지 못했어요.");
+    }
+  }
+
   return (
     <section className="home-section friend-section" id="friends">
       <div className="section-heading"><h2>친구들</h2><Link href="/friends/new">＋ 친구 등록</Link></div>
@@ -205,7 +238,12 @@ function FriendSection({ empty = false, friends = [] }: { empty?: boolean; frien
       ) : (
         <div className="friend-grid">
           {friends.map((friend) => (
-            <article key={friend.id}>
+            <article key={friend.id} role="link" tabIndex={0} aria-label={`${friend.name} 이름표 보기`} onClick={() => void openFriend(friend)} onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                void openFriend(friend);
+              }
+            }} data-loading={openingFriendId === friend.id}>
               <div>
                 {friend.photos[0]?.url ? (
                   <Image src={friend.photos[0].url} alt={`${friend.name} 사진`} fill sizes="(max-width: 760px) 45vw, 220px" quality={62} />
@@ -214,7 +252,7 @@ function FriendSection({ empty = false, friends = [] }: { empty?: boolean; frien
                 )}
               </div>
               <h3>{friend.name}</h3>
-              <p>{friend.breed}</p>
+              <p>{openingFriendId === friend.id ? "이동 중" : friend.breed}</p>
             </article>
           ))}
         </div>
@@ -265,7 +303,7 @@ export function LoggedHome({ userId, userName }: { userId: string; userName: str
       });
       if (!active) return;
       setPets(data);
-      const friendData = await getFriendDogsByOwner(supabase, userId).catch((error) => {
+      const friendData = await getFriendDogs().catch((error) => {
         console.error(error);
         return [];
       });
@@ -288,7 +326,7 @@ export function LoggedHome({ userId, userName }: { userId: string; userName: str
           <div className="section-heading"><h2>내 새꾸 <span aria-hidden>🐾</span></h2><Link className="add-pet-cta" href="/pets/new">＋ 새꾸 추가</Link></div>
           <div className="pet-card-scroll">{pets.map((pet, index) => <PetCard key={pet.id} pet={pet} index={index} onNotify={showCopyAlert} />)}</div>
         </section>
-        <FriendSection friends={friends} />
+        <FriendSection friends={friends} onNotify={showCopyAlert} />
       </>}
     </div>
   );

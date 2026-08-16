@@ -54,7 +54,6 @@ type DogPublicLinkRow = {
 
 const DOG_SELECT = "id,owner_id,name,breed,birth_date,weight_kg,gender,neutering_status,animal_registration_no,instagram_username,invite_code,dog_care_profiles(takes_medication,primary_hospital,primary_hospital_address,primary_hospital_phone,emergency_note,emergency_contact_1,emergency_contact_2,lost_location_address,lost_location_district,lost_location_neighborhood,lost_location_detail,lost_location_lat,lost_location_lng,lost_at,meals_per_day,marks_indoors,fifth_vaccine_done,daycare_experience,has_allergy,handoff_memo),dog_images(id,storage_key,image_url,sort_order,is_primary)";
 const DOG_SELECT_BASE = "id,owner_id,name,breed,birth_date,weight_kg,gender,neutering_status,animal_registration_no,instagram_username,invite_code,dog_images(id,storage_key,image_url,sort_order,is_primary)";
-const DOG_FRIEND_SELECT = "friend_dog:dogs!dog_friends_friend_dog_id_fkey(id,owner_id,name,breed,birth_date,weight_kg,gender,neutering_status,animal_registration_no,instagram_username,invite_code,dog_images(id,storage_key,image_url,sort_order,is_primary))";
 const DOG_CARE_SELECT = "takes_medication,primary_hospital,primary_hospital_address,primary_hospital_phone,emergency_note,emergency_contact_1,emergency_contact_2,lost_location_address,lost_location_district,lost_location_neighborhood,lost_location_detail,lost_location_lat,lost_location_lng,lost_at,meals_per_day,marks_indoors,fifth_vaccine_done,daycare_experience,has_allergy,handoff_memo";
 
 function mapDog(row: DogRow): DogProfile {
@@ -195,20 +194,6 @@ export async function getDogsByOwner(supabase: SupabaseClient, ownerId: string) 
   const { data, error } = await supabase.from("dogs").select(DOG_SELECT).eq("owner_id", ownerId).order("created_at", { ascending: true });
   if (error) throw error;
   return ((data ?? []) as DogRow[]).map(mapDog);
-}
-
-export async function getFriendDogsByOwner(supabase: SupabaseClient, ownerId: string) {
-  const { data, error } = await supabase
-    .from("dog_friends")
-    .select(DOG_FRIEND_SELECT)
-    .eq("owner_id", ownerId)
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-
-  return ((data ?? []) as unknown as Array<{ friend_dog: DogRow | DogRow[] | null }>)
-    .map((row) => Array.isArray(row.friend_dog) ? row.friend_dog[0] : row.friend_dog)
-    .filter(Boolean)
-    .map((dog) => mapDog(dog as DogRow));
 }
 
 export async function getDogForOwner(supabase: SupabaseClient, ownerId: string, dogId: string) {

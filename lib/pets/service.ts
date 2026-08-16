@@ -2,9 +2,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { deleteDogImages, uploadDogImage } from "@/lib/storage/dog-images";
 import type { DogCareProfileInput, DogPhoto, DogProfileInput } from "./types";
 import { generateInviteCode } from "./invite-code";
-import { clearDogLostLocation, deleteDog, deleteDogFoundLocationReports, deleteDogPhotoRows, getDogById, getDogByPublicToken, getDogForOwner, getDogsByOwner, getFriendDogsByOwner, getOrCreateDogPublicLink, insertDog, insertDogPhotos, setPrimaryDogPhoto, updateDog, updateDogLostLocation, upsertDogCareProfile } from "./repository";
+import { clearDogLostLocation, deleteDog, deleteDogFoundLocationReports, deleteDogPhotoRows, getDogById, getDogByPublicToken, getDogForOwner, getDogsByOwner, getOrCreateDogPublicLink, insertDog, insertDogPhotos, setPrimaryDogPhoto, updateDog, updateDogLostLocation, upsertDogCareProfile } from "./repository";
 
-export { getDogById, getDogByPublicToken, getDogForOwner, getDogsByOwner, getFriendDogsByOwner, getOrCreateDogPublicLink };
+export { getDogById, getDogByPublicToken, getDogForOwner, getDogsByOwner, getOrCreateDogPublicLink };
 
 async function insertDogWithInviteCode(supabase: SupabaseClient, ownerId: string, profile: DogProfileInput) {
   let lastError: unknown;
