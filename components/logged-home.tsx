@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { KeyboardEvent, useEffect, useState } from "react";
+import { KeyboardEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { getDogsByOwner } from "@/lib/pets/service";
@@ -71,10 +71,41 @@ function PetCard({
   onNotify: (message: string) => void;
 }) {
   const router = useRouter();
+  const tokenCacheRef = useRef<Partial<Record<DogPublicLinkType, Promise<string>>>>({});
+  const [pendingAction, setPendingAction] = useState("");
+
+  function getCachedPublicLinkToken(type: DogPublicLinkType) {
+    tokenCacheRef.current[type] ??= getPublicLinkToken(pet.id, type);
+    return tokenCacheRef.current[type];
+  }
+
+  function prefetchSharePage(token: string, qr = false) {
+    router.prefetch(`/share/${token}${qr ? "?view=qr" : ""}`);
+  }
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      (["PROFILE", "CARE", "LOST"] as DogPublicLinkType[]).forEach((type) => {
+        void getCachedPublicLinkToken(type).then((token) => {
+          prefetchSharePage(token);
+          if (type !== "PROFILE") prefetchSharePage(token, true);
+        }).catch(() => undefined);
+      });
+    }, 600);
+
+    return () => window.clearTimeout(timer);
+  }, []);
 
   async function openProfilePage() {
-    const token = await getPublicLinkToken(pet.id, "PROFILE");
-    router.push(`/share/${token}`);
+    if (pendingAction) return;
+    setPendingAction("profile");
+    try {
+      const token = await getCachedPublicLinkToken("PROFILE");
+      router.push(`/share/${token}`);
+    } catch {
+      setPendingAction("");
+      onNotify("공유 페이지를 준비하지 못했어요.");
+    }
   }
 
   function handleCardKeyDown(event: KeyboardEvent<HTMLElement>) {
@@ -85,20 +116,44 @@ function PetCard({
   }
 
   async function copyShareLink(mode: "care" | "lost") {
-    const token = await getPublicLinkToken(pet.id, mode === "care" ? "CARE" : "LOST");
-    const url = new URL(`/share/${token}`, window.location.origin);
-    await navigator.clipboard.writeText(url.toString());
-    onNotify(mode === "care" ? "돌봄 링크를 복사했어요." : "실종 링크를 복사했어요.");
+    const type = mode === "care" ? "CARE" : "LOST";
+    setPendingAction(`${mode}-link`);
+    try {
+      const token = await getCachedPublicLinkToken(type);
+      prefetchSharePage(token);
+      prefetchSharePage(token, true);
+      const url = new URL(`/share/${token}`, window.location.origin);
+      await navigator.clipboard.writeText(url.toString());
+      onNotify(mode === "care" ? "돌봄 링크를 복사했어요." : "실종 링크를 복사했어요.");
+    } catch {
+      onNotify("링크를 준비하지 못했어요.");
+    } finally {
+      setPendingAction("");
+    }
   }
 
   async function openCareQr() {
-    const token = await getPublicLinkToken(pet.id, "CARE");
-    router.push(`/share/${token}?view=qr`);
+    if (pendingAction) return;
+    setPendingAction("care-qr");
+    try {
+      const token = await getCachedPublicLinkToken("CARE");
+      router.push(`/share/${token}?view=qr`);
+    } catch {
+      setPendingAction("");
+      onNotify("QR을 준비하지 못했어요.");
+    }
   }
 
   async function openLostQr() {
-    const token = await getPublicLinkToken(pet.id, "LOST");
-    router.push(`/share/${token}?view=qr`);
+    if (pendingAction) return;
+    setPendingAction("lost-qr");
+    try {
+      const token = await getCachedPublicLinkToken("LOST");
+      router.push(`/share/${token}?view=qr`);
+    } catch {
+      setPendingAction("");
+      onNotify("QR을 준비하지 못했어요.");
+    }
   }
 
   async function copyInviteCode() {
@@ -130,10 +185,10 @@ function PetCard({
           </p>
         </div>
         <div className="pet-card-actions" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
-          <button type="button" onClick={() => copyShareLink("care")}><PetActionContent icon={actionIcons.careLink} label="돌봄 링크" /></button>
-          <button type="button" onClick={() => copyShareLink("lost")}><PetActionContent icon={actionIcons.lostLink} label="실종 링크" /></button>
-          <button type="button" className="qr-action care-qr" onClick={() => void openCareQr()}><PetActionContent icon={actionIcons.careQr} label="관리 QR" /></button>
-          <button type="button" className="qr-action lost-qr" onClick={() => void openLostQr()}><PetActionContent icon={actionIcons.lostQr} label="실종 QR" /></button>
+          <button type="button" onClick={() => copyShareLink("care")} disabled={Boolean(pendingAction)}><PetActionContent icon={actionIcons.careLink} label={pendingAction === "care-link" ? "준비 중" : "돌봄 링크"} /></button>
+          <button type="button" onClick={() => copyShareLink("lost")} disabled={Boolean(pendingAction)}><PetActionContent icon={actionIcons.lostLink} label={pendingAction === "lost-link" ? "준비 중" : "실종 링크"} /></button>
+          <button type="button" className="qr-action care-qr" onClick={() => void openCareQr()} disabled={Boolean(pendingAction)}><PetActionContent icon={actionIcons.careQr} label={pendingAction === "care-qr" ? "이동 중" : "관리 QR"} /></button>
+          <button type="button" className="qr-action lost-qr" onClick={() => void openLostQr()} disabled={Boolean(pendingAction)}><PetActionContent icon={actionIcons.lostQr} label={pendingAction === "lost-qr" ? "이동 중" : "실종 QR"} /></button>
           <button type="button" onClick={copyInviteCode}><PetActionContent icon={actionIcons.inviteCode} label="초대코드" /></button>
         </div>
       </div>

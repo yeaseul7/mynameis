@@ -7,6 +7,7 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://mynameis.life";
 const siteName = "mynameis";
 const siteTitle = "mynameis — 반려견 QR 이름표";
 const siteDescription = "반려견의 돌봄 정보와 실종 정보를 QR 이름표 링크 하나로 안전하게 준비하고 공유하세요.";
+const ogImage = "/og-image-20260816.png";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -22,9 +23,9 @@ export const metadata: Metadata = {
     title: siteTitle,
     description: siteDescription,
     url: "/",
-    images: [{ url: "/og-image.png", width: 1536, height: 1024, alt: "mynameis 우리 아이의 모든 정보 한 곳에" }],
+    images: [{ url: ogImage, width: 1536, height: 1024, alt: "mynameis 우리 아이의 모든 정보 한 곳에" }],
   },
-  twitter: { card: "summary_large_image", title: siteTitle, description: siteDescription, images: ["/og-image.png"] },
+  twitter: { card: "summary_large_image", title: siteTitle, description: siteDescription, images: [ogImage] },
   robots: { index: true, follow: true },
 };
 
