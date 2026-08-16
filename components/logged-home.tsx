@@ -5,7 +5,7 @@ import Link from "next/link";
 import { KeyboardEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { getDogsByOwner } from "@/lib/pets/service";
+import { getDogsByOwner, getFriendDogsByOwner } from "@/lib/pets/service";
 import type { DogProfile } from "@/lib/dogs";
 import type { DogPublicLinkType } from "@/lib/pets/types";
 
@@ -196,11 +196,29 @@ function PetCard({
   );
 }
 
-function FriendSection({ empty = false }: { empty?: boolean }) {
+function FriendSection({ empty = false, friends = [] }: { empty?: boolean; friends?: DogProfile[] }) {
   return (
     <section className="home-section friend-section" id="friends">
-      <div className="section-heading"><h2>친구들</h2></div>
-      <div className="friend-empty"><strong>{empty ? "아직 등록한 친구가 없어요!" : "친구 목록을 준비하고 있어요."}</strong><Link href="/friends/new">＋ 친구 등록하기</Link></div>
+      <div className="section-heading"><h2>친구들</h2><Link href="/friends/new">＋ 친구 등록</Link></div>
+      {empty || friends.length === 0 ? (
+        <div className="friend-empty"><strong>아직 등록한 친구가 없어요!</strong><Link href="/friends/new">＋ 친구 등록하기</Link></div>
+      ) : (
+        <div className="friend-grid">
+          {friends.map((friend) => (
+            <article key={friend.id}>
+              <div>
+                {friend.photos[0]?.url ? (
+                  <Image src={friend.photos[0].url} alt={`${friend.name} 사진`} fill sizes="(max-width: 760px) 45vw, 220px" quality={62} />
+                ) : (
+                  <div className="friend-photo-empty" aria-hidden>{friend.name.slice(0, 1)}</div>
+                )}
+              </div>
+              <h3>{friend.name}</h3>
+              <p>{friend.breed}</p>
+            </article>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
@@ -227,6 +245,7 @@ function HomeSkeleton() {
 
 export function LoggedHome({ userId, userName }: { userId: string; userName: string }) {
   const [pets, setPets] = useState<DogProfile[] | null>(null);
+  const [friends, setFriends] = useState<DogProfile[]>([]);
   const [loadError, setLoadError] = useState("");
   const [alertMessage, setAlertMessage] = useState("");
 
@@ -246,6 +265,12 @@ export function LoggedHome({ userId, userName }: { userId: string; userName: str
       });
       if (!active) return;
       setPets(data);
+      const friendData = await getFriendDogsByOwner(supabase, userId).catch((error) => {
+        console.error(error);
+        return [];
+      });
+      if (!active) return;
+      setFriends(friendData);
     }
     loadPets();
     return () => { active = false; };
@@ -263,7 +288,7 @@ export function LoggedHome({ userId, userName }: { userId: string; userName: str
           <div className="section-heading"><h2>내 새꾸 <span aria-hidden>🐾</span></h2><Link className="add-pet-cta" href="/pets/new">＋ 새꾸 추가</Link></div>
           <div className="pet-card-scroll">{pets.map((pet, index) => <PetCard key={pet.id} pet={pet} index={index} onNotify={showCopyAlert} />)}</div>
         </section>
-        <FriendSection />
+        <FriendSection friends={friends} />
       </>}
     </div>
   );

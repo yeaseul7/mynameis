@@ -25,3 +25,25 @@ with check (
     where dogs.id = dog_id and dogs.owner_id = (select auth.uid())
   )
 );
+
+drop policy if exists "friends can read friend dogs" on public.dogs;
+create policy "friends can read friend dogs" on public.dogs
+for select to authenticated
+using (
+  exists (
+    select 1 from public.dog_friends
+    where dog_friends.friend_dog_id = dogs.id
+      and dog_friends.owner_id = (select auth.uid())
+  )
+);
+
+drop policy if exists "friends can read friend dog images" on public.dog_images;
+create policy "friends can read friend dog images" on public.dog_images
+for select to authenticated
+using (
+  exists (
+    select 1 from public.dog_friends
+    where dog_friends.friend_dog_id = dog_images.dog_id
+      and dog_friends.owner_id = (select auth.uid())
+  )
+);
