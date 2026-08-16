@@ -4,23 +4,27 @@ import { AppShell } from "@/components/app-shell";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://mynameis.life";
+const siteName = "mynameis";
+const siteTitle = "mynameis — 반려견 QR 이름표";
+const siteDescription = "반려견의 돌봄 정보와 실종 정보를 QR 이름표 링크 하나로 안전하게 준비하고 공유하세요.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: { default: "mynameis — 우리 아이의 이름표", template: "%s | mynameis" },
-  description: "반려동물의 돌봄·의료·실종 정보를 이름표 링크 하나로 안전하게 공유하세요.",
-  applicationName: "mynameis",
-  keywords: ["mynameis", "반려동물 이름표", "강아지 QR", "반려동물 프로필", "실종동물"],
+  title: { default: siteTitle, template: `%s | ${siteName}` },
+  description: siteDescription,
+  applicationName: siteName,
+  keywords: ["mynameis", "반려견 QR 이름표", "강아지 QR 이름표", "반려동물 이름표", "강아지 실종 QR", "반려견 돌봄 정보", "반려동물 프로필 공유"],
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
     locale: "ko_KR",
-    siteName: "mynameis",
-    title: "mynameis — 우리 아이의 이름표",
-    description: "돌봄부터 실종까지, 우리 아이의 정보를 안전하게 공유하세요.",
+    siteName,
+    title: siteTitle,
+    description: siteDescription,
     url: "/",
+    images: [{ url: "/og-image.png", width: 1536, height: 1024, alt: "mynameis 우리 아이의 모든 정보 한 곳에" }],
   },
-  twitter: { card: "summary_large_image", title: "mynameis", description: "우리 아이의 이름표를 만들어 주세요." },
+  twitter: { card: "summary_large_image", title: siteTitle, description: siteDescription, images: ["/og-image.png"] },
   robots: { index: true, follow: true },
 };
 

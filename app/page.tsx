@@ -3,6 +3,27 @@ import { LandingPreviewCarousel } from "@/components/landing-preview-carousel";
 import { getCurrentUser } from "@/lib/auth/server";
 import Image from "next/image";
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://mynameis.life";
+
+function LandingStructuredData() {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    name: "mynameis",
+    url: siteUrl,
+    applicationCategory: "LifestyleApplication",
+    operatingSystem: "Web",
+    description: "반려견의 돌봄 정보와 실종 정보를 QR 이름표 링크 하나로 준비하고 공유하는 서비스입니다.",
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "KRW",
+    },
+  };
+
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />;
+}
+
 function NameTagIllustration() {
   return (
     <div className="guest-visual" aria-label="얼리의 이름표 미리보기">
@@ -22,6 +43,7 @@ function NameTagIllustration() {
 function GuestHome() {
   return (
     <main className="guest-page">
+      <LandingStructuredData />
       <section className="guest-home">
         <NameTagIllustration />
         <div className="guest-copy">
