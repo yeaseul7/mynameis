@@ -99,15 +99,13 @@ export function BasicShareProfile({
   }
 
   async function endLostReport() {
+    const confirmed = window.confirm("정말 종료하시겠습니까?\n잔여 기록이 모두 삭제됩니다.");
+    if (!confirmed) return;
+
     const response = await fetch(`/api/dogs/${dog.id}/lost-location`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        lostAt: null,
-        lostLocationDistrict: null,
-        lostLocationNeighborhood: null,
-        lostLocationDetail: null,
-      }),
+      body: JSON.stringify({ endReport: true }),
     });
     if (!response.ok) return;
     const emptyLostSnapshot: LostLocationSnapshot = {
@@ -211,6 +209,7 @@ export function BasicShareProfile({
           {activeTab === "lost" ? (
             <>
               <h2>실종 정보</h2>
+              {canEdit && hasLostInfo ? <button className="end-lost-report-button" type="button" onClick={() => void endLostReport()}>실종 신고 종료</button> : null}
               {canEdit && foundLocationReports.length > 0 ? <FoundLocationReports reports={foundLocationReports} kakaoKey={kakaoMapKey} /> : null}
               {hasLostInfo ? (
                 <>
@@ -223,7 +222,6 @@ export function BasicShareProfile({
                   {care?.primaryHospitalAddress ? <dl><dt>병원 주소</dt><dd>{care.primaryHospitalAddress}</dd></dl> : null}
                   {care?.primaryHospitalPhone ? <dl><dt>병원 전화</dt><dd>{care.primaryHospitalPhone}</dd></dl> : null}
                   <dl><dt>특이사항</dt><dd>{care?.emergencyNote || "미입력"}</dd></dl>
-                  {canEdit ? <button className="end-lost-report-button" type="button" onClick={() => void endLostReport()}>실종 신고 종료</button> : null}
                 </>
               ) : (
                 <p className="basic-tab-empty">등록된 실종 정보가 없어요.</p>

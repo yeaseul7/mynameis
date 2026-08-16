@@ -67,9 +67,7 @@ export function FoundLocationReports({ reports, kakaoKey }: { reports: FoundLoca
 
   return (
     <section className="found-report-section" aria-labelledby="found-report-title">
-      <div className="found-report-heading">
-        <span id="found-report-title">실종 제보 {reports.length}건</span>
-      </div>
+      <h3 className="sr-only" id="found-report-title">실종 제보</h3>
       {kakaoKey ? <div className="found-report-map" ref={mapRef} aria-label="실종 제보 위치 지도" /> : <p className="found-report-map-empty">카카오 지도 키가 없어 목록만 표시돼요.</p>}
       <div className="found-report-list">
         {reports.map((report) => (

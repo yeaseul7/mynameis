@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { getDogForOwner, saveDogLostLocation } from "@/lib/pets/service";
+import { endDogLostReport, getDogForOwner, saveDogLostLocation } from "@/lib/pets/service";
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ dogId: string }> }) {
   const user = await getCurrentUser();
@@ -32,6 +32,17 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!dog) return NextResponse.json({ message: "Not found" }, { status: 404 });
 
   const body = await request.json();
+  if (body.endReport === true) {
+    await endDogLostReport(supabase, { ownerId: user.id, dogId });
+    return NextResponse.json({
+      lostAt: null,
+      lostLocationAddress: null,
+      lostLocationDistrict: null,
+      lostLocationNeighborhood: null,
+      lostLocationDetail: null,
+    });
+  }
+
   const lostLocationDistrict = typeof body.lostLocationDistrict === "string" && body.lostLocationDistrict.trim() ? body.lostLocationDistrict.trim() : null;
   const lostLocationNeighborhood = typeof body.lostLocationNeighborhood === "string" && body.lostLocationNeighborhood.trim() ? body.lostLocationNeighborhood.trim() : null;
   const lostLocationDetail = typeof body.lostLocationDetail === "string" && body.lostLocationDetail.trim() ? body.lostLocationDetail.trim() : null;

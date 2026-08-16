@@ -171,6 +171,25 @@ export async function updateDogLostLocation(
   if (error) throw error;
 }
 
+export async function clearDogLostLocation(supabase: SupabaseClient, ownerId: string, dogId: string) {
+  const { error } = await supabase.from("dog_care_profiles").update({
+    lost_at: null,
+    lost_location_address: null,
+    lost_location_district: null,
+    lost_location_neighborhood: null,
+    lost_location_detail: null,
+    lost_location_lat: null,
+    lost_location_lng: null,
+    updated_at: new Date().toISOString(),
+  }).eq("dog_id", dogId).eq("owner_id", ownerId);
+  if (error) throw error;
+}
+
+export async function deleteDogFoundLocationReports(supabase: SupabaseClient, ownerId: string, dogId: string) {
+  const { error } = await supabase.from("dog_found_location_reports").delete().eq("dog_id", dogId).eq("owner_id", ownerId);
+  if (error) throw error;
+}
+
 export async function getDogsByOwner(supabase: SupabaseClient, ownerId: string) {
   const { data, error } = await supabase.from("dogs").select(DOG_SELECT).eq("owner_id", ownerId).order("created_at", { ascending: true });
   if (error) throw error;

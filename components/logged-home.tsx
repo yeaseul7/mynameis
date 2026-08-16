@@ -10,12 +10,6 @@ import { getDogsByOwner } from "@/lib/pets/service";
 import type { DogProfile } from "@/lib/dogs";
 import type { DogPublicLinkType } from "@/lib/pets/types";
 
-const friends = [
-  { name: "몽이", breed: "말티즈", age: "4살", image: "/pets/mongi.png" },
-  { name: "보리", breed: "비숑", age: "2살", image: "/pets/bori.png" },
-  { name: "초코", breed: "푸들", age: "5살", image: "/pets/choco.png" },
-];
-
 const actionIcons = {
   careLink: "/pet-actions/care-link.png",
   inviteCode: "/pet-actions/invite-code.png",
@@ -148,7 +142,13 @@ function PetCard({
 
   return (
     <article className="home-pet-card" role="link" tabIndex={0} aria-label={`${pet.name} 공개 프로필 보기`} onClick={() => void openProfilePage()} onKeyDown={handleCardKeyDown}>
-      <div className="home-pet-photo"><Image src={pet.photos[0]?.url ?? (index === 0 ? "/pets/early.png" : "/pets/bori.png")} alt={`${pet.name} 프로필 사진`} fill sizes="(max-width: 760px) 82vw, 360px" unoptimized={Boolean(pet.photos[0]?.url)} /></div>
+      <div className="home-pet-photo">
+        {pet.photos[0]?.url ? (
+          <Image src={pet.photos[0].url} alt={`${pet.name} 프로필 사진`} fill sizes="(max-width: 760px) 82vw, 360px" unoptimized />
+        ) : (
+          <div className="home-pet-photo-empty" aria-hidden>{pet.name.slice(0, 1)}</div>
+        )}
+      </div>
       <div className="home-pet-content">
         <div className="pet-card-copy">
           <h3>{pet.name}</h3>
@@ -173,15 +173,28 @@ function FriendSection({ empty = false }: { empty?: boolean }) {
   return (
     <section className="home-section friend-section" id="friends">
       <div className="section-heading"><h2>친구들</h2></div>
-      {empty ? (
-        <div className="friend-empty"><strong>아직 등록한 친구가 없어요!</strong><Link href="/friends/new">＋ 친구 등록하기</Link></div>
-      ) : (
-        <div className="friend-grid">
-          {friends.map((friend) => <article key={friend.name}><div><Image src={friend.image} alt={`${friend.name} 프로필 사진`} fill sizes="(max-width: 760px) 45vw, 220px" /></div><h3>{friend.name}</h3><p>{friend.breed} · {friend.age}</p></article>)}
-          <Link className="add-friend-card" href="/friends/new"><span>＋</span><b>친구 등록</b></Link>
-        </div>
-      )}
+      <div className="friend-empty"><strong>{empty ? "아직 등록한 친구가 없어요!" : "친구 목록을 준비하고 있어요."}</strong><Link href="/friends/new">＋ 친구 등록하기</Link></div>
     </section>
+  );
+}
+
+function HomeSkeleton() {
+  return (
+    <div className="logged-home home-skeleton" aria-busy="true" aria-label="이름표를 불러오고 있어요">
+      <section className="home-greeting">
+        <div className="skeleton-line skeleton-title" />
+        <div className="skeleton-line skeleton-copy" />
+      </section>
+      <section className="home-section my-pets-section">
+        <div className="section-heading">
+          <div className="skeleton-line skeleton-heading" />
+          <div className="skeleton-pill" />
+        </div>
+        <div className="pet-card-scroll">
+          <article className="home-pet-card skeleton-card" />
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -277,7 +290,7 @@ export function LoggedHome({ userId, userName }: { userId: string; userName: str
     return () => { active = false; };
   }, [userId]);
 
-  if (pets === null) return <div className="dashboard-loading">이름표를 불러오고 있어요.</div>;
+  if (pets === null) return <HomeSkeleton />;
   if (loadError) return <div className="dashboard-loading">{loadError}</div>;
 
   return (

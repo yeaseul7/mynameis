@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { deleteDogImages, uploadDogImage } from "@/lib/storage/dog-images";
 import type { DogCareProfileInput, DogPhoto, DogProfileInput } from "./types";
 import { generateInviteCode } from "./invite-code";
-import { deleteDog, deleteDogPhotoRows, getDogById, getDogByPublicToken, getDogForOwner, getDogsByOwner, getOrCreateDogPublicLink, insertDog, insertDogPhotos, setPrimaryDogPhoto, updateDog, updateDogLostLocation, upsertDogCareProfile } from "./repository";
+import { clearDogLostLocation, deleteDog, deleteDogFoundLocationReports, deleteDogPhotoRows, getDogById, getDogByPublicToken, getDogForOwner, getDogsByOwner, getOrCreateDogPublicLink, insertDog, insertDogPhotos, setPrimaryDogPhoto, updateDog, updateDogLostLocation, upsertDogCareProfile } from "./repository";
 
 export { getDogById, getDogByPublicToken, getDogForOwner, getDogsByOwner, getOrCreateDogPublicLink };
 
@@ -107,6 +107,14 @@ export async function saveDogLostLocation(
   },
 ) {
   await updateDogLostLocation(supabase, input.ownerId, input.dogId, input);
+}
+
+export async function endDogLostReport(
+  supabase: SupabaseClient,
+  input: { ownerId: string; dogId: string },
+) {
+  await clearDogLostLocation(supabase, input.ownerId, input.dogId);
+  await deleteDogFoundLocationReports(supabase, input.ownerId, input.dogId);
 }
 
 export async function createDogProfile(
