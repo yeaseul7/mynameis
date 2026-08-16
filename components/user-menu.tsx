@@ -1,27 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { signOut } from "@/lib/auth/client";
+import Link from "next/link";
+
+function getInitial(value: string) {
+  return value.trim().slice(0, 1).toUpperCase() || "U";
+}
 
 export function UserMenu({ email }: { email: string }) {
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
-
-  async function logout() {
-    setLoading(true);
-    await signOut();
-    router.push("/");
-    router.refresh();
-  }
-
   return (
     <div className="user-menu">
-      <span className="login-dot" aria-hidden="true" />
-      <span className="user-email" title={email}>{email}</span>
-      <button className="header-logout" type="button" onClick={logout} disabled={loading}>
-        {loading ? "처리 중" : "로그아웃"}
-      </button>
+      <Link className="account-initial-link" href="/account" title={email} aria-label="계정관리로 이동">
+        {getInitial(email)}
+      </Link>
     </div>
   );
 }

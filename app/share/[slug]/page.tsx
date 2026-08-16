@@ -113,6 +113,7 @@ export default async function SharedProfile({ params, searchParams }: { params: 
           <h1>{isLost ? "실종 QR" : "관리 QR"}</h1>
           <p>휴대폰 카메라로 스캔하면 공유 페이지가 열립니다.</p>
           <img src={qrImage} alt={`${isLost ? "실종" : "관리"} 공유 QR 코드`} width="360" height="360" />
+          <a className="qr-download-link" href={qrImage} download={`mynameis-${isLost ? "lost" : "care"}-qr.png`}>사진으로 저장하기</a>
           <Link href={`/share/${slug}`}>공유 페이지 확인</Link>
         </section>
       </div>
