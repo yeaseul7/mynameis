@@ -20,6 +20,7 @@ export function PetRegistrationForm({ userId }: { userId: string }) {
   const [birthDay, setBirthDay] = useState("");
   const [step, setStep] = useState(1);
   const formRef = useRef<HTMLFormElement>(null);
+  const creatingDogPromiseRef = useRef<Promise<string> | null>(null);
   const router = useRouter();
   const currentYear = new Date().getFullYear();
   const stepTitle = ["기본정보", "긴급정보", "돌봄정보"][step - 1];
@@ -96,7 +97,26 @@ export function PetRegistrationForm({ userId }: { userId: string }) {
     };
   }
 
+  async function ensureDogProfileCreated(profile: ReturnType<typeof getProfileInput>) {
+    if (dogId) return dogId;
+    if (!creatingDogPromiseRef.current) {
+      const supabase = createBrowserSupabaseClient();
+      creatingDogPromiseRef.current = createDogBasicProfile(supabase, { ownerId: userId, profile, files });
+    }
+
+    try {
+      const createdDogId = await creatingDogPromiseRef.current;
+      setDogId(createdDogId);
+      setFiles([]);
+      return createdDogId;
+    } catch (error) {
+      creatingDogPromiseRef.current = null;
+      throw error;
+    }
+  }
+
   async function goToNextStep() {
+    if (uploading) return;
     if (step === 1 && !dogId && files.length === 0) return setError("우리 아이 사진을 한 장 이상 등록해 주세요.");
     const controls = formRef.current?.querySelectorAll<HTMLElement>(`[data-step="${step}"] input, [data-step="${step}"] select, [data-step="${step}"] textarea`);
     for (const control of Array.from(controls ?? [])) {
@@ -108,7 +128,6 @@ export function PetRegistrationForm({ userId }: { userId: string }) {
       }
     }
     const form = new FormData(formRef.current ?? undefined);
-    const supabase = createBrowserSupabaseClient();
     setUploading(true);
     try {
       if (step === 1) {
@@ -118,11 +137,7 @@ export function PetRegistrationForm({ userId }: { userId: string }) {
           setUploading(false);
           return setError(validationError);
         }
-        if (!dogId) {
-          const createdDogId = await createDogBasicProfile(supabase, { ownerId: userId, profile, files });
-          setDogId(createdDogId);
-          setFiles([]);
-        }
+        await ensureDogProfileCreated(profile);
       }
       if (step === 2) {
         const currentDogId = dogId;
@@ -132,7 +147,7 @@ export function PetRegistrationForm({ userId }: { userId: string }) {
           setUploading(false);
           return setError("긴급 연락처1을 입력해 주세요.");
         }
-        await saveDogCareProfile(supabase, { ownerId: userId, dogId: currentDogId, careProfile });
+        await saveDogCareProfile(createBrowserSupabaseClient(), { ownerId: userId, dogId: currentDogId, careProfile });
       }
     } catch {
       setUploading(false);
@@ -145,6 +160,7 @@ export function PetRegistrationForm({ userId }: { userId: string }) {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (uploading) return;
     if (!dogId && files.length === 0) return setError("우리 아이 사진을 한 장 이상 등록해 주세요.");
 
     const form = new FormData(event.currentTarget);
@@ -157,10 +173,9 @@ export function PetRegistrationForm({ userId }: { userId: string }) {
 
     setUploading(true);
     setError("");
-    const supabase = createBrowserSupabaseClient();
     try {
-      const currentDogId = dogId || await createDogBasicProfile(supabase, { ownerId: userId, profile, files });
-      await saveDogCareProfile(supabase, { ownerId: userId, dogId: currentDogId, careProfile });
+      const currentDogId = await ensureDogProfileCreated(profile);
+      await saveDogCareProfile(createBrowserSupabaseClient(), { ownerId: userId, dogId: currentDogId, careProfile });
       router.push("/");
       router.refresh();
     } catch {
@@ -202,7 +217,7 @@ export function PetRegistrationForm({ userId }: { userId: string }) {
         <input id="animal-registration-number" name="registrationNumber" inputMode="numeric" pattern="[0-9]{15}" maxLength={15} placeholder="숫자 15자리" />
       </div>
       <label>인스타 아이디<input name="instagramUsername" inputMode="text" maxLength={31} placeholder="예: mynameis.pet" /></label>
-      <div className="step-actions"><button className="button primary" type="button" onClick={goToNextStep}>다음</button></div>
+      <div className="step-actions"><button className="button primary" type="button" onClick={goToNextStep} disabled={uploading}>{uploading ? "저장 중..." : "다음"}</button></div>
       </section>
       <section className="registration-step" data-step="2" hidden={step !== 2}>
       <p className="info-note">연락처는 화면에 직접 공개되지 않고, 연락 요청을 전달하는 데 사용돼요.</p>
@@ -211,7 +226,7 @@ export function PetRegistrationForm({ userId }: { userId: string }) {
       <fieldset><legend>복용약 여부</legend><label><input type="radio" name="takesMedication" value="YES" /> 있어요</label><label><input type="radio" name="takesMedication" value="NO" /> 없어요</label></fieldset>
       <HospitalSearchField />
       <label>특이사항<textarea name="emergencyNote" rows={3} placeholder="예: 낯선 사람을 무서워해요." /></label>
-      <div className="step-actions split"><button className="button step-back" type="button" onClick={() => setStep(1)}>이전</button><span aria-hidden></span><button className="button primary" type="button" onClick={goToNextStep}>다음</button></div>
+      <div className="step-actions split"><button className="button step-back" type="button" onClick={() => setStep(1)} disabled={uploading}>이전</button><span aria-hidden></span><button className="button primary" type="button" onClick={goToNextStep} disabled={uploading}>{uploading ? "저장 중..." : "다음"}</button></div>
       </section>
       <section className="registration-step" data-step="3" hidden={step !== 3}>
       <p className="step-description">하루 루틴과 돌봄 시 꼭 알아야 할 내용을 입력해 주세요.</p>
@@ -221,7 +236,7 @@ export function PetRegistrationForm({ userId }: { userId: string }) {
       <fieldset><legend>유치원 경험 <span className="required-mark" aria-hidden>*</span><span className="sr-only">필수</span></legend><label><input type="radio" name="daycareExperience" value="YES" required /> 있어요</label><label><input type="radio" name="daycareExperience" value="NO" required /> 없어요</label></fieldset>
       <fieldset><legend>알러지 여부 <span className="required-mark" aria-hidden>*</span><span className="sr-only">필수</span></legend><label><input type="radio" name="hasAllergy" value="YES" required /> 있어요</label><label><input type="radio" name="hasAllergy" value="NO" required /> 없어요</label></fieldset>
       <label>전달 메모<textarea name="handoffMemo" rows={4} placeholder="성향이나 알러지 종류에 대해 설명을 적어주세요." /></label>
-      <div className="step-actions split"><button className="button step-back" type="button" onClick={() => setStep(2)}>이전</button><span aria-hidden></span><button className="button primary" type="submit" disabled={uploading}>{uploading ? "사진을 올리고 있어요..." : "이름표 만들기"}</button></div>
+      <div className="step-actions split"><button className="button step-back" type="button" onClick={() => setStep(2)} disabled={uploading}>이전</button><span aria-hidden></span><button className="button primary" type="submit" disabled={uploading}>{uploading ? "사진을 올리고 있어요..." : "이름표 만들기"}</button></div>
       </section>
     </form>
   );
