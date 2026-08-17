@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import QRCode from "qrcode";
 import { useState } from "react";
 import { FaCheckCircle, FaRegCircle } from "react-icons/fa";
@@ -95,12 +96,14 @@ export function BasicShareProfile({
   kakaoMapKey?: string;
 }) {
   const photos = dog.photos;
+  const router = useRouter();
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const activePhoto = photos[activePhotoIndex]?.url;
   const galleryPhotos = photos.slice(1);
   const care = dog.careProfile;
   const [lostModalOpen, setLostModalOpen] = useState(false);
   const [locationShareStatus, setLocationShareStatus] = useState<"idle" | "sharing" | "shared" | "failed">("idle");
+  const [deleteStatus, setDeleteStatus] = useState<"idle" | "deleting" | "failed">("idle");
   const [locationReportOpen, setLocationReportOpen] = useState(false);
   const [locationReportNote, setLocationReportNote] = useState("");
   const [lostSnapshot, setLostSnapshot] = useState<LostLocationSnapshot>({
@@ -146,6 +149,21 @@ export function BasicShareProfile({
       lostLocationDetail: null,
     };
     setLostSnapshot(emptyLostSnapshot);
+  }
+
+  async function deleteMyDog() {
+    const confirmed = window.confirm(`${dog.name} 정보를 삭제할까요?\n사진, 공유 링크, 방명록, 친구/실종 관련 기록도 함께 삭제됩니다.`);
+    if (!confirmed) return;
+
+    setDeleteStatus("deleting");
+    const response = await fetch(`/api/dogs/${dog.id}`, { method: "DELETE" });
+    if (!response.ok) {
+      setDeleteStatus("failed");
+      return;
+    }
+
+    router.push("/");
+    router.refresh();
   }
 
   function shareCurrentLocation() {
@@ -377,7 +395,12 @@ export function BasicShareProfile({
         )}
         <button className="poster-save-button" type="button" onClick={() => void savePoster()}>포스터 저장하기</button>
         <Guestbook slug={slug} dogName={dog.name} initialEntries={guestbookEntries} canWrite={canWriteGuestbook} />
-        {canEdit ? <Link className="share-edit-button basic-edit-button" href={`/pets/${dog.id}/edit`}>정보 수정</Link> : null}
+        {canEdit ? (
+          <button className="delete-my-dog-button" type="button" onClick={() => void deleteMyDog()} disabled={deleteStatus === "deleting"}>
+            {deleteStatus === "deleting" ? "삭제 중..." : "내새꾸삭제"}
+          </button>
+        ) : null}
+        {deleteStatus === "failed" ? <p className="delete-my-dog-error" role="alert">삭제하지 못했어요. 잠시 후 다시 시도해 주세요.</p> : null}
         <Link className="made-with" href="/">made with <b>mynameis</b></Link>
       </div>
       {mode === "lost" ? (

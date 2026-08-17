@@ -320,6 +320,21 @@ export async function deleteDog(supabase: SupabaseClient, dogId: string) {
   if (error) throw error;
 }
 
+export async function deleteDogForOwner(supabase: SupabaseClient, ownerId: string, dogId: string) {
+  const { error } = await supabase.from("dogs").delete().eq("id", dogId).eq("owner_id", ownerId);
+  if (error) throw error;
+}
+
+export async function getDogImageStorageKeys(supabase: SupabaseClient, ownerId: string, dogId: string) {
+  const { data, error } = await supabase
+    .from("dog_images")
+    .select("storage_key")
+    .eq("dog_id", dogId)
+    .eq("owner_id", ownerId);
+  if (error) throw error;
+  return (data ?? []).map((row) => row.storage_key as string).filter(Boolean);
+}
+
 export async function insertDogPhotos(supabase: SupabaseClient, rows: Array<{
   dogId: string;
   ownerId: string;
