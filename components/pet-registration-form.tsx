@@ -89,6 +89,8 @@ export function PetRegistrationForm({ userId }: { userId: string }) {
       lostLocationLng: null,
       lostAt: String(form.get("lostAt") ?? "").trim() ? new Date(String(form.get("lostAt"))).toISOString() : null,
       mealsPerDay: String(form.get("mealsPerDay") ?? "").trim() ? Number(form.get("mealsPerDay")) : null,
+      walksPerWeek: String(form.get("walksPerWeek") ?? "").trim() ? Number(form.get("walksPerWeek")) : null,
+      toiletingType: String(form.get("toiletingType") ?? "") as "INDOOR" | "OUTDOOR" | "BOTH" || null,
       marksIndoors: String(form.get("marksIndoors") ?? "") ? String(form.get("marksIndoors")) === "YES" : null,
       fifthVaccineDone: String(form.get("fifthVaccineDone") ?? "") ? String(form.get("fifthVaccineDone")) === "YES" : null,
       daycareExperience: String(form.get("daycareExperience") ?? "") ? String(form.get("daycareExperience")) === "YES" : null,
@@ -167,7 +169,7 @@ export function PetRegistrationForm({ userId }: { userId: string }) {
     const profile = getProfileInput(form);
     const careProfile = getCareProfileInput(form);
     if (!profile.name || !profile.breed || !profile.birthDate || !profile.gender) return setError("사진과 기본정보를 모두 입력해 주세요.");
-    if (!careProfile.emergencyContact1 || !careProfile.mealsPerDay || careProfile.marksIndoors === null || careProfile.fifthVaccineDone === null || careProfile.daycareExperience === null || careProfile.hasAllergy === null) return setError("긴급 연락처와 돌봄 필수 정보를 입력해 주세요.");
+    if (!careProfile.emergencyContact1 || !careProfile.mealsPerDay || careProfile.walksPerWeek === null || !careProfile.toiletingType || careProfile.marksIndoors === null || careProfile.fifthVaccineDone === null || careProfile.daycareExperience === null || careProfile.hasAllergy === null) return setError("긴급 연락처와 돌봄 필수 정보를 입력해 주세요.");
     const validationError = validateWeightKg(profile.weightKg) || validateBirthDate(profile.birthDate) || validateRegistrationNumber(profile.animalRegistrationNo ?? "") || validateInstagramUsername(profile.instagramUsername ?? "");
     if (validationError) return setError(validationError);
 
@@ -213,7 +215,7 @@ export function PetRegistrationForm({ userId }: { userId: string }) {
       <label>몸무게 (kg)<input name="weightKg" type="number" inputMode="decimal" min="0.1" max="200" step="0.1" placeholder="예: 3.8" /></label>
       <fieldset className="three-option-field"><legend>중성화 여부</legend><label><input type="radio" name="isNeutered" value="NEUTERED" /> 했어요</label><label><input type="radio" name="isNeutered" value="NOT_NEUTERED" /> 안 했어요</label><label><input type="radio" name="isNeutered" value="UNKNOWN" /> 몰라요</label></fieldset>
       <div className="registration-number-field">
-        <div><label htmlFor="animal-registration-number">동물등록번호</label><a href="https://www.animal.go.kr/front/index.do" target="_blank" rel="noopener noreferrer">동물등록번호를 몰라요? 조회하기 ↗</a></div>
+        <div><label htmlFor="animal-registration-number">동물등록번호</label><a href="https://www.animal.go.kr/front/awtis/mypage/registAnimalList.do?menuNo=2000000019" target="_blank" rel="noopener noreferrer">동물등록번호를 몰라요? 조회하기 ↗</a></div>
         <input id="animal-registration-number" name="registrationNumber" inputMode="numeric" pattern="[0-9]{15}" maxLength={15} placeholder="숫자 15자리" />
       </div>
       <label>인스타 아이디<input name="instagramUsername" inputMode="text" maxLength={31} placeholder="예: mynameis.pet" /></label>
@@ -231,6 +233,8 @@ export function PetRegistrationForm({ userId }: { userId: string }) {
       <section className="registration-step" data-step="3" hidden={step !== 3}>
       <p className="step-description">하루 루틴과 돌봄 시 꼭 알아야 할 내용을 입력해 주세요.</p>
       <label><span className="label-text">1일 식사 횟수 <span className="required-mark" aria-hidden>*</span><span className="sr-only">필수</span></span><input name="mealsPerDay" type="number" inputMode="numeric" min="1" max="10" step="1" placeholder="예: 2" required /></label>
+      <label><span className="label-text">일주일 산책 횟수 <span className="required-mark" aria-hidden>*</span><span className="sr-only">필수</span></span><input name="walksPerWeek" type="number" inputMode="numeric" min="0" max="70" step="1" placeholder="예: 7" required /></label>
+      <fieldset className="three-option-field"><legend>배변 방식 <span className="required-mark" aria-hidden>*</span><span className="sr-only">필수</span></legend><label><input type="radio" name="toiletingType" value="INDOOR" required /> 실내</label><label><input type="radio" name="toiletingType" value="OUTDOOR" required /> 실외</label><label><input type="radio" name="toiletingType" value="BOTH" required /> 둘 다</label></fieldset>
       <fieldset><legend>마킹 여부 <span className="required-mark" aria-hidden>*</span><span className="sr-only">필수</span></legend><label><input type="radio" name="marksIndoors" value="YES" required /> 해요</label><label><input type="radio" name="marksIndoors" value="NO" required /> 안 해요</label></fieldset>
       <fieldset><legend>5차 필수 접종 여부 <span className="required-mark" aria-hidden>*</span><span className="sr-only">필수</span></legend><label><input type="radio" name="fifthVaccineDone" value="YES" required /> 완료</label><label><input type="radio" name="fifthVaccineDone" value="NO" required /> 미완료</label></fieldset>
       <fieldset><legend>유치원 경험 <span className="required-mark" aria-hidden>*</span><span className="sr-only">필수</span></legend><label><input type="radio" name="daycareExperience" value="YES" required /> 있어요</label><label><input type="radio" name="daycareExperience" value="NO" required /> 없어요</label></fieldset>

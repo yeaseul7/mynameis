@@ -121,6 +121,8 @@ export function PetEditForm({ dog }: { dog: EditableDog }) {
       lostLocationLng: null,
       lostAt,
       mealsPerDay: String(form.get("mealsPerDay") ?? "").trim() ? Number(form.get("mealsPerDay")) : null,
+      walksPerWeek: String(form.get("walksPerWeek") ?? "").trim() ? Number(form.get("walksPerWeek")) : null,
+      toiletingType: String(form.get("toiletingType") ?? "") as "INDOOR" | "OUTDOOR" | "BOTH" || null,
       marksIndoors: String(form.get("marksIndoors") ?? "") ? String(form.get("marksIndoors")) === "YES" : null,
       fifthVaccineDone: String(form.get("fifthVaccineDone") ?? "") ? String(form.get("fifthVaccineDone")) === "YES" : null,
       daycareExperience: String(form.get("daycareExperience") ?? "") ? String(form.get("daycareExperience")) === "YES" : null,
@@ -183,7 +185,7 @@ export function PetEditForm({ dog }: { dog: EditableDog }) {
     const careProfile = getCareProfileInput(form);
     const validationError = validateWeightKg(profile.weightKg, true) || validateBirthDate(profile.birthDate) || validateRegistrationNumber(profile.animalRegistrationNo ?? "") || validateInstagramUsername(profile.instagramUsername ?? "");
     if (validationError) return setError(validationError);
-    if (!careProfile.emergencyContact1 || !careProfile.mealsPerDay || careProfile.marksIndoors === null || careProfile.fifthVaccineDone === null || careProfile.daycareExperience === null || careProfile.hasAllergy === null) return setError("긴급 연락처와 돌봄 필수 정보를 입력해 주세요.");
+    if (!careProfile.emergencyContact1 || !careProfile.mealsPerDay || careProfile.walksPerWeek === null || !careProfile.toiletingType || careProfile.marksIndoors === null || careProfile.fifthVaccineDone === null || careProfile.daycareExperience === null || careProfile.hasAllergy === null) return setError("긴급 연락처와 돌봄 필수 정보를 입력해 주세요.");
 
     setSaving(true);
     setError("");
@@ -198,8 +200,7 @@ export function PetEditForm({ dog }: { dog: EditableDog }) {
         deletedPhotos,
         files,
       });
-      router.push("/");
-      router.refresh();
+      router.replace("/");
     } catch {
       setError("사진을 수정하지 못했어요. Storage와 dog_images 정책을 확인해 주세요.");
       setSaving(false);
@@ -256,6 +257,8 @@ export function PetEditForm({ dog }: { dog: EditableDog }) {
       </section>
       <section className="registration-step" data-step="3" hidden={step !== 3}>
       <label><span className="label-text">1일 식사 횟수 <span className="required-mark" aria-hidden>*</span><span className="sr-only">필수</span></span><input name="mealsPerDay" type="number" inputMode="numeric" min="1" max="10" step="1" defaultValue={dog.careProfile?.mealsPerDay ?? ""} required /></label>
+      <label><span className="label-text">일주일 산책 횟수 <span className="required-mark" aria-hidden>*</span><span className="sr-only">필수</span></span><input name="walksPerWeek" type="number" inputMode="numeric" min="0" max="70" step="1" defaultValue={dog.careProfile?.walksPerWeek ?? ""} required /></label>
+      <fieldset className="three-option-field"><legend>배변 방식 <span className="required-mark" aria-hidden>*</span><span className="sr-only">필수</span></legend><label><input type="radio" name="toiletingType" value="INDOOR" defaultChecked={dog.careProfile?.toiletingType === "INDOOR"} required /> 실내</label><label><input type="radio" name="toiletingType" value="OUTDOOR" defaultChecked={dog.careProfile?.toiletingType === "OUTDOOR"} required /> 실외</label><label><input type="radio" name="toiletingType" value="BOTH" defaultChecked={dog.careProfile?.toiletingType === "BOTH"} required /> 둘 다</label></fieldset>
       <fieldset><legend>마킹 여부 <span className="required-mark" aria-hidden>*</span><span className="sr-only">필수</span></legend><label><input type="radio" name="marksIndoors" value="YES" defaultChecked={dog.careProfile?.marksIndoors === true} required /> 해요</label><label><input type="radio" name="marksIndoors" value="NO" defaultChecked={dog.careProfile?.marksIndoors === false} required /> 안 해요</label></fieldset>
       <fieldset><legend>5차 필수 접종 여부 <span className="required-mark" aria-hidden>*</span><span className="sr-only">필수</span></legend><label><input type="radio" name="fifthVaccineDone" value="YES" defaultChecked={dog.careProfile?.fifthVaccineDone === true} required /> 완료</label><label><input type="radio" name="fifthVaccineDone" value="NO" defaultChecked={dog.careProfile?.fifthVaccineDone === false} required /> 미완료</label></fieldset>
       <fieldset><legend>유치원 경험 <span className="required-mark" aria-hidden>*</span><span className="sr-only">필수</span></legend><label><input type="radio" name="daycareExperience" value="YES" defaultChecked={dog.careProfile?.daycareExperience === true} required /> 있어요</label><label><input type="radio" name="daycareExperience" value="NO" defaultChecked={dog.careProfile?.daycareExperience === false} required /> 없어요</label></fieldset>

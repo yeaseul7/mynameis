@@ -88,7 +88,7 @@ export default async function SharedProfile({ params, searchParams }: { params: 
     return (
       <div className="shared-page">
         <section className="shared-profile">
-          <Link className="share-brand" href="/" aria-label="mynameis 홈"><Image className="wordmark-logo" src="/mynameis-logo-240.png" alt="mynameis" width={96} height={33} /></Link>
+          <Link className="share-brand" href="/" aria-label="mynameis 홈"><Image className="wordmark-logo" src="/mynameis-logo-240.png" alt="mynameis" width={72} height={25} /></Link>
           <h1>이름표를 찾을 수 없어요</h1>
           <p>공유 링크가 만료되었거나 접근할 수 없는 프로필이에요.</p>
           <Link className="made-with" href="/">made with <b>mynameis</b></Link>

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { DogCareProfileInput, DogProfile, DogProfileInput, DogPhoto, DogPublicLink, DogPublicLinkType } from "./types";
+import type { DogCareProfileInput, DogProfile, DogProfileInput, DogPhoto, DogPublicLink, DogPublicLinkType, DogToiletingType } from "./types";
 
 type DogRow = {
   id: string;
@@ -29,6 +29,8 @@ type DogRow = {
     lost_location_lng: number | string | null;
     lost_at: string | null;
     meals_per_day: number | null;
+    walks_per_week: number | null;
+    toileting_type: DogToiletingType | null;
     marks_indoors: boolean | null;
     fifth_vaccine_done: boolean | null;
     daycare_experience: boolean | null;
@@ -52,9 +54,9 @@ type DogPublicLinkRow = {
   token: string;
 };
 
-const DOG_SELECT = "id,owner_id,name,breed,birth_date,weight_kg,gender,neutering_status,animal_registration_no,instagram_username,invite_code,dog_care_profiles(takes_medication,primary_hospital,primary_hospital_address,primary_hospital_phone,emergency_note,emergency_contact_1,emergency_contact_2,lost_location_address,lost_location_district,lost_location_neighborhood,lost_location_detail,lost_location_lat,lost_location_lng,lost_at,meals_per_day,marks_indoors,fifth_vaccine_done,daycare_experience,has_allergy,handoff_memo),dog_images(id,storage_key,image_url,sort_order,is_primary)";
+const DOG_SELECT = "id,owner_id,name,breed,birth_date,weight_kg,gender,neutering_status,animal_registration_no,instagram_username,invite_code,dog_care_profiles(takes_medication,primary_hospital,primary_hospital_address,primary_hospital_phone,emergency_note,emergency_contact_1,emergency_contact_2,lost_location_address,lost_location_district,lost_location_neighborhood,lost_location_detail,lost_location_lat,lost_location_lng,lost_at,meals_per_day,walks_per_week,toileting_type,marks_indoors,fifth_vaccine_done,daycare_experience,has_allergy,handoff_memo),dog_images(id,storage_key,image_url,sort_order,is_primary)";
 const DOG_SELECT_BASE = "id,owner_id,name,breed,birth_date,weight_kg,gender,neutering_status,animal_registration_no,instagram_username,invite_code,dog_images(id,storage_key,image_url,sort_order,is_primary)";
-const DOG_CARE_SELECT = "takes_medication,primary_hospital,primary_hospital_address,primary_hospital_phone,emergency_note,emergency_contact_1,emergency_contact_2,lost_location_address,lost_location_district,lost_location_neighborhood,lost_location_detail,lost_location_lat,lost_location_lng,lost_at,meals_per_day,marks_indoors,fifth_vaccine_done,daycare_experience,has_allergy,handoff_memo";
+const DOG_CARE_SELECT = "takes_medication,primary_hospital,primary_hospital_address,primary_hospital_phone,emergency_note,emergency_contact_1,emergency_contact_2,lost_location_address,lost_location_district,lost_location_neighborhood,lost_location_detail,lost_location_lat,lost_location_lng,lost_at,meals_per_day,walks_per_week,toileting_type,marks_indoors,fifth_vaccine_done,daycare_experience,has_allergy,handoff_memo";
 
 function mapDog(row: DogRow): DogProfile {
   const careProfile = row.dog_care_profiles?.[0];
@@ -86,6 +88,8 @@ function mapDog(row: DogRow): DogProfile {
       lostLocationLng: careProfile.lost_location_lng == null ? null : Number(careProfile.lost_location_lng),
       lostAt: careProfile.lost_at,
       mealsPerDay: careProfile.meals_per_day,
+      walksPerWeek: careProfile.walks_per_week,
+      toiletingType: careProfile.toileting_type,
       marksIndoors: careProfile.marks_indoors,
       fifthVaccineDone: careProfile.fifth_vaccine_done,
       daycareExperience: careProfile.daycare_experience,
@@ -129,6 +133,8 @@ export async function upsertDogCareProfile(
     lost_location_lng: input.lostLocationLng,
     lost_at: input.lostAt,
     meals_per_day: input.mealsPerDay,
+    walks_per_week: input.walksPerWeek,
+    toileting_type: input.toiletingType,
     marks_indoors: input.marksIndoors,
     fifth_vaccine_done: input.fifthVaccineDone,
     daycare_experience: input.daycareExperience,

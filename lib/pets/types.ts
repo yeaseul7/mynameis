@@ -1,5 +1,6 @@
 export type DogGender = "MALE" | "FEMALE";
 export type DogNeuteringStatus = "NEUTERED" | "NOT_NEUTERED" | "UNKNOWN";
+export type DogToiletingType = "INDOOR" | "OUTDOOR" | "BOTH";
 export type DogPublicLinkType = "PROFILE" | "CARE" | "LOST";
 
 export type DogPhoto = {
@@ -42,6 +43,8 @@ export type DogCareProfile = {
   lostLocationLng: number | null;
   lostAt: string | null;
   mealsPerDay: number | null;
+  walksPerWeek: number | null;
+  toiletingType: DogToiletingType | null;
   marksIndoors: boolean | null;
   fifthVaccineDone: boolean | null;
   daycareExperience: boolean | null;

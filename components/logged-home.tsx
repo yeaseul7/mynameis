@@ -6,9 +6,11 @@ import { KeyboardEvent, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { RiUserAddLine } from "react-icons/ri";
+import { FaPaw } from "react-icons/fa6";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { invokeFunction } from "@/lib/supabase/functions";
 import { getDogsByOwner } from "@/lib/pets/service";
+import { FriendInviteForm } from "@/components/friend-invite-form";
 import type { DogProfile } from "@/lib/dogs";
 import type { DogPublicLinkType } from "@/lib/pets/types";
 
@@ -31,7 +33,7 @@ function PetActionContent({ label, icon }: { label: string; icon: string }) {
   return <><span className="pet-action-icon" aria-hidden><img src={icon} alt="" /></span><span>{label}</span></>;
 }
 
-function EmptyPets() {
+function EmptyPets({ onAddFriend }: { onAddFriend: () => void }) {
   return (
     <>
       <section className="home-section my-pets-section" id="my-pets">
@@ -43,7 +45,7 @@ function EmptyPets() {
           <Link className="home-primary-cta" href="/pets/new">＋ 내 새꾸 등록하기</Link>
         </div>
       </section>
-      <FriendSection empty />
+      <FriendSection empty onAddFriend={onAddFriend} />
     </>
   );
 }
@@ -51,7 +53,7 @@ function EmptyPets() {
 function CopyAlert({ message }: { message: string }) {
   if (!message) return null;
   return createPortal(
-    <div className="copy-alert" role="status" aria-live="polite">{message}</div>,
+    <div className="copy-alert" role="status" aria-live="polite"><FaPaw aria-hidden="true" />{message}</div>,
     document.body,
   );
 }
@@ -86,7 +88,7 @@ function PetCard({
           if (type !== "PROFILE") prefetchSharePage(token, true);
         }).catch(() => undefined);
       });
-    }, 600);
+    }, 2000);
 
     return () => window.clearTimeout(timer);
   }, []);
@@ -193,9 +195,25 @@ function PetCard({
   );
 }
 
-function FriendSection({ empty = false, friends = [], onNotify }: { empty?: boolean; friends?: DogProfile[]; onNotify?: (message: string) => void }) {
+function FriendSection({ empty = false, friends = [], onNotify, onAddFriend }: { empty?: boolean; friends?: DogProfile[]; onNotify?: (message: string) => void; onAddFriend: () => void }) {
   const router = useRouter();
   const [openingFriendId, setOpeningFriendId] = useState("");
+
+  function friendCardColor(id: string) {
+    const colors = ["lime", "purple", "orange"] as const;
+    const hash = [...id].reduce((total, character) => total + character.charCodeAt(0), 0);
+    return colors[hash % colors.length];
+  }
+
+  function friendAge(birthDate: string | null) {
+    if (!birthDate) return "나이 정보 없음";
+    const [year, month, day] = birthDate.split("-").map(Number);
+    if (!year || !month || !day) return "나이 정보 없음";
+    const today = new Date();
+    let age = today.getFullYear() - year;
+    if (today.getMonth() + 1 < month || (today.getMonth() + 1 === month && today.getDate() < day)) age -= 1;
+    return age >= 0 ? `${age}살` : "나이 정보 없음";
+  }
 
   async function openFriend(friend: DogProfile) {
     if (openingFriendId) return;
@@ -211,13 +229,13 @@ function FriendSection({ empty = false, friends = [], onNotify }: { empty?: bool
 
   return (
     <section className="home-section friend-section" id="friends">
-      <div className="section-heading"><h2>친구들</h2><Link className="add-friend-cta" href="/friends/new"><RiUserAddLine aria-hidden="true" /><span>친구 등록</span></Link></div>
+      <div className="section-heading"><h2>친구들</h2><button className="add-friend-cta" type="button" onClick={onAddFriend}><RiUserAddLine aria-hidden="true" /><span>친구 등록</span></button></div>
       {empty || friends.length === 0 ? (
-        <div className="friend-empty"><strong>아직 등록한 친구가 없어요!</strong><Link href="/friends/new">＋ 친구 등록하기</Link></div>
+        <div className="friend-empty"><strong>아직 등록한 친구가 없어요!</strong><button type="button" onClick={onAddFriend}>＋ 친구 등록하기</button></div>
       ) : (
         <div className="friend-grid">
           {friends.map((friend) => (
-            <article key={friend.id} role="link" tabIndex={0} aria-label={`${friend.name} 이름표 보기`} onClick={() => void openFriend(friend)} onKeyDown={(event) => {
+            <article className={`friend-card friend-card-${friendCardColor(friend.id)}`} key={friend.id} role="link" tabIndex={0} aria-label={`${friend.name} 이름표 보기`} onClick={() => void openFriend(friend)} onKeyDown={(event) => {
               if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();
                 void openFriend(friend);
@@ -230,8 +248,10 @@ function FriendSection({ empty = false, friends = [], onNotify }: { empty?: bool
                   <div className="friend-photo-empty" aria-hidden>{friend.name.slice(0, 1)}</div>
                 )}
               </div>
-              <h3>{friend.name}</h3>
-              <p>{openingFriendId === friend.id ? "이동 중" : friend.breed}</p>
+              <div className="friend-card-copy">
+                <h3><span aria-hidden><FaPaw /></span>{friend.name}</h3>
+                <p>{openingFriendId === friend.id ? "이동 중" : friendAge(friend.birthDate)}</p>
+              </div>
             </article>
           ))}
         </div>
@@ -272,31 +292,52 @@ export function LoggedHome({ userId, userName }: { userId: string; userName: str
   const [friends, setFriends] = useState<DogProfile[]>([]);
   const [loadError, setLoadError] = useState("");
   const [alertMessage, setAlertMessage] = useState("");
+  const [friendModalOpen, setFriendModalOpen] = useState(false);
 
   function showCopyAlert(message: string) {
     setAlertMessage(message);
     window.setTimeout(() => setAlertMessage(""), 1800);
   }
 
+  async function refreshFriends() {
+    const friendData = await getFriendDogs().catch((error) => {
+      console.error(error);
+      return [];
+    });
+    setFriends(friendData);
+    setFriendModalOpen(false);
+    showCopyAlert("친구를 추가했어요.");
+  }
+
+  useEffect(() => {
+    if (!friendModalOpen) return;
+    function closeOnEscape(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape") setFriendModalOpen(false);
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [friendModalOpen]);
+
   useEffect(() => {
     let active = true;
-    async function loadPets() {
+    async function loadHome() {
       const supabase = createBrowserSupabaseClient();
-      const data = await getDogsByOwner(supabase, userId).catch((error) => {
-        console.error(error);
-        setLoadError("아이 정보를 불러오지 못했어요. DB 스키마와 권한을 확인해 주세요.");
-        return [];
-      });
+      const [petData, friendData] = await Promise.all([
+        getDogsByOwner(supabase, userId).catch((error) => {
+          console.error(error);
+          setLoadError("아이 정보를 불러오지 못했어요. DB 스키마와 권한을 확인해 주세요.");
+          return [];
+        }),
+        getFriendDogs().catch((error) => {
+          console.error(error);
+          return [];
+        }),
+      ]);
       if (!active) return;
-      setPets(data);
-      const friendData = await getFriendDogs().catch((error) => {
-        console.error(error);
-        return [];
-      });
-      if (!active) return;
+      setPets(petData);
       setFriends(friendData);
     }
-    loadPets();
+    loadHome();
     return () => { active = false; };
   }, [userId]);
 
@@ -306,13 +347,24 @@ export function LoggedHome({ userId, userName }: { userId: string; userName: str
   return (
     <div className="logged-home">
       <CopyAlert message={alertMessage} />
+      {friendModalOpen ? createPortal(
+        <div className="friend-modal-backdrop" role="presentation" onMouseDown={() => setFriendModalOpen(false)}>
+          <section className="friend-modal" role="dialog" aria-modal="true" aria-labelledby="friend-modal-title" onMouseDown={(event) => event.stopPropagation()}>
+            <button className="friend-modal-close" type="button" aria-label="닫기" onClick={() => setFriendModalOpen(false)}>×</button>
+            <h2 id="friend-modal-title">친구추가</h2>
+            <p>친구에게 받은 초대코드를 입력해 주세요.</p>
+            <FriendInviteForm onSuccess={refreshFriends} />
+          </section>
+        </div>,
+        document.body,
+      ) : null}
       <section className="home-greeting"><p>우리 아이들의 프로필을 한눈에 확인해보세요.</p></section>
-      {pets.length === 0 ? <EmptyPets /> : <>
+      {pets.length === 0 ? <EmptyPets onAddFriend={() => setFriendModalOpen(true)} /> : <>
         <section className="home-section my-pets-section" id="my-pets">
           <div className="section-heading"><h2>내 새꾸 <span aria-hidden>🐾</span></h2><Link className="add-pet-cta" href="/pets/new">＋ 새꾸 추가</Link></div>
           <div className="pet-card-scroll">{pets.map((pet, index) => <PetCard key={pet.id} pet={pet} index={index} onNotify={showCopyAlert} />)}</div>
         </section>
-        <FriendSection friends={friends} onNotify={showCopyAlert} />
+        <FriendSection friends={friends} onNotify={showCopyAlert} onAddFriend={() => setFriendModalOpen(true)} />
       </>}
     </div>
   );
