@@ -49,8 +49,15 @@ Deno.serve(async (request) => {
         lostLocationAddress: "",
       };
       values.lostLocationAddress = body.endReport === true ? null : [values.lostLocationDistrict, values.lostLocationNeighborhood, values.lostLocationDetail].filter(Boolean).join(" ") || null;
-      const { error } = await admin.from("dog_care_profiles").upsert({ dog_id: dogId, owner_id: user.id, lost_at: values.lostAt, lost_location_address: values.lostLocationAddress, lost_location_district: values.lostLocationDistrict, lost_location_neighborhood: values.lostLocationNeighborhood, lost_location_detail: values.lostLocationDetail }, { onConflict: "dog_id" });
+      const { data: updated, error } = await admin
+        .from("dog_care_profiles")
+        .update({ lost_at: values.lostAt, lost_location_address: values.lostLocationAddress, lost_location_district: values.lostLocationDistrict, lost_location_neighborhood: values.lostLocationNeighborhood, lost_location_detail: values.lostLocationDetail })
+        .eq("dog_id", dogId)
+        .eq("owner_id", user.id)
+        .select("dog_id")
+        .maybeSingle();
       if (error) throw error;
+      if (!updated) throw new HttpError(409, "돌봄 정보를 먼저 등록해 주세요.");
       return json(values);
     }
     throw new HttpError(400, "지원하지 않는 작업이에요.");
