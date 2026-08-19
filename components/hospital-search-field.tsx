@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { invokeFunction } from "@/lib/supabase/functions";
 
 type HospitalResult = {
   id: string;
@@ -37,9 +38,7 @@ export function HospitalSearchField({
     setSearching(true);
     setMessage("");
     try {
-      const response = await fetch(`/api/kakao/hospitals?q=${encodeURIComponent(query)}`);
-      if (!response.ok) throw new Error("Hospital search failed");
-      const data = await response.json() as { documents?: HospitalResult[] };
+      const data = await invokeFunction<{ documents?: HospitalResult[] }>("kakao-hospitals", { query });
       const documents = data.documents ?? [];
       setResults(documents);
       setMessage(documents.length ? "" : "검색 결과가 없어요. 지역명과 함께 다시 검색해 보세요.");

@@ -3,58 +3,32 @@
 import Image from "next/image";
 import Link from "next/link";
 import { KeyboardEvent, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import { RiUserAddLine } from "react-icons/ri";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { invokeFunction } from "@/lib/supabase/functions";
 import { getDogsByOwner } from "@/lib/pets/service";
 import type { DogProfile } from "@/lib/dogs";
 import type { DogPublicLinkType } from "@/lib/pets/types";
 
-const actionIcons = {
-  careLink: "/pet-actions/care-link.png",
-  inviteCode: "/pet-actions/invite-code.png",
-  lostLink: "/pet-actions/lost-link.png",
-  careQr: "/pet-actions/care-qr.png",
-  lostQr: "/pet-actions/lost-qr.png",
-};
-
 async function getPublicLinkToken(dogId: string, type: DogPublicLinkType) {
-  const response = await fetch(`/api/dogs/${dogId}/public-link`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type }),
-  });
-  if (!response.ok) throw new Error("Public link generation failed");
-  const data = await response.json() as { token: string };
+  const data = await invokeFunction<{ token: string }>("dogs", { action: "public-link", dogId, type });
   return data.token;
 }
 
 async function getFriendDogs() {
-  const response = await fetch("/api/friends");
-  if (!response.ok) throw new Error("Friend list fetch failed");
-  const data = await response.json() as { friends: DogProfile[] };
+  const data = await invokeFunction<{ friends: DogProfile[] }>("friends", { action: "list" });
   return data.friends;
 }
 
 async function getFriendProfileToken(dogId: string) {
-  const response = await fetch("/api/friends", {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ dogId }),
-  });
-  if (!response.ok) throw new Error("Friend profile link fetch failed");
-  const data = await response.json() as { token: string };
+  const data = await invokeFunction<{ token: string }>("friends", { action: "profile-link", dogId });
   return data.token;
 }
 
-function PetActionContent({ icon, label }: { icon: string; label: string }) {
-  return (
-    <>
-      <span className="pet-action-icon" aria-hidden>
-        <Image src={icon} alt="" width={34} height={34} />
-      </span>
-      <span>{label}</span>
-    </>
-  );
+function PetActionContent({ label, icon }: { label: string; icon: string }) {
+  return <><span className="pet-action-icon" aria-hidden><img src={icon} alt="" /></span><span>{label}</span></>;
 }
 
 function EmptyPets() {
@@ -76,7 +50,10 @@ function EmptyPets() {
 
 function CopyAlert({ message }: { message: string }) {
   if (!message) return null;
-  return <div className="copy-alert" role="status" aria-live="polite">{message}</div>;
+  return createPortal(
+    <div className="copy-alert" role="status" aria-live="polite">{message}</div>,
+    document.body,
+  );
 }
 
 function PetCard({
@@ -196,18 +173,20 @@ function PetCard({
       </div>
       <div className="home-pet-content">
         <div className="pet-card-copy">
-          <h3>{pet.name}</h3>
-          <p>
-            <span>{pet.animalRegistrationNo ? `동물등록번호 ${pet.animalRegistrationNo}` : "동물등록번호 미등록"}</span>
-            {pet.animalRegistrationNo && <button type="button" onClick={(event) => { event.stopPropagation(); void copyRegistrationNumber(); }}>복사</button>}
+          <div className="pet-card-title-row">
+            <h3>{pet.name}</h3>
+          </div>
+          <p className="pet-registration-number">
+            동물등록번호 {pet.animalRegistrationNo || "미등록"}
           </p>
         </div>
         <div className="pet-card-actions" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
-          <button type="button" onClick={() => copyShareLink("care")} disabled={Boolean(pendingAction)}><PetActionContent icon={actionIcons.careLink} label={pendingAction === "care-link" ? "준비 중" : "돌봄 링크"} /></button>
-          <button type="button" onClick={() => copyShareLink("lost")} disabled={Boolean(pendingAction)}><PetActionContent icon={actionIcons.lostLink} label={pendingAction === "lost-link" ? "준비 중" : "실종 링크"} /></button>
-          <button type="button" className="qr-action care-qr" onClick={() => void openCareQr()} disabled={Boolean(pendingAction)}><PetActionContent icon={actionIcons.careQr} label={pendingAction === "care-qr" ? "이동 중" : "관리 QR"} /></button>
-          <button type="button" className="qr-action lost-qr" onClick={() => void openLostQr()} disabled={Boolean(pendingAction)}><PetActionContent icon={actionIcons.lostQr} label={pendingAction === "lost-qr" ? "이동 중" : "실종 QR"} /></button>
-          <button type="button" onClick={copyInviteCode}><PetActionContent icon={actionIcons.inviteCode} label="초대코드" /></button>
+          <button type="button" onClick={() => copyShareLink("lost")} disabled={Boolean(pendingAction)}><PetActionContent icon="/pet-actions/lost-link.png" label={pendingAction === "lost-link" ? "준비 중" : "실종 링크"} /></button>
+          <button type="button" className="qr-action lost-qr" onClick={() => void openLostQr()} disabled={Boolean(pendingAction)}><PetActionContent icon="/pet-actions/lost-qr.png" label={pendingAction === "lost-qr" ? "이동 중" : "실종 QR"} /></button>
+          <button type="button" onClick={() => void copyInviteCode()}><PetActionContent icon="/pet-actions/invite-code.png" label="초대코드 복사" /></button>
+          <button type="button" onClick={() => copyShareLink("care")} disabled={Boolean(pendingAction)}><PetActionContent icon="/pet-actions/care-link.png" label={pendingAction === "care-link" ? "준비 중" : "돌봄 링크"} /></button>
+          <button type="button" className="qr-action care-qr" onClick={() => void openCareQr()} disabled={Boolean(pendingAction)}><PetActionContent icon="/pet-actions/care-qr.png" label={pendingAction === "care-qr" ? "이동 중" : "돌봄 QR"} /></button>
+          <button type="button" onClick={() => void copyRegistrationNumber()} disabled={!pet.animalRegistrationNo}><PetActionContent icon="/pet-actions/registration-number.png" label={pet.animalRegistrationNo ? "등록번호 복사" : "등록번호 없음"} /></button>
         </div>
       </div>
     </article>
@@ -232,7 +211,7 @@ function FriendSection({ empty = false, friends = [], onNotify }: { empty?: bool
 
   return (
     <section className="home-section friend-section" id="friends">
-      <div className="section-heading"><h2>친구들</h2><Link href="/friends/new">＋ 친구 등록</Link></div>
+      <div className="section-heading"><h2>친구들</h2><Link className="add-friend-cta" href="/friends/new"><RiUserAddLine aria-hidden="true" /><span>친구 등록</span></Link></div>
       {empty || friends.length === 0 ? (
         <div className="friend-empty"><strong>아직 등록한 친구가 없어요!</strong><Link href="/friends/new">＋ 친구 등록하기</Link></div>
       ) : (
@@ -274,7 +253,14 @@ function HomeSkeleton() {
           <div className="skeleton-pill" />
         </div>
         <div className="pet-card-scroll">
-          <article className="home-pet-card skeleton-card" />
+          <article className="home-pet-card skeleton-home-card">
+            <div className="skeleton-card skeleton-home-photo" />
+            <div className="skeleton-home-content">
+              <div className="skeleton-line skeleton-home-name" />
+              <div className="skeleton-line skeleton-home-number" />
+              <div className="skeleton-home-actions">{[0, 1, 2, 3, 4, 5].map((item) => <div className="skeleton-pill" key={item} />)}</div>
+            </div>
+          </article>
         </div>
       </section>
     </div>
@@ -320,7 +306,7 @@ export function LoggedHome({ userId, userName }: { userId: string; userName: str
   return (
     <div className="logged-home">
       <CopyAlert message={alertMessage} />
-      <section className="home-greeting"><h1>{userName}님, 오늘도 반가워요 <span aria-hidden>👋</span></h1><p>우리 아이들의 프로필을 확인해보세요.</p></section>
+      <section className="home-greeting"><p>우리 아이들의 프로필을 한눈에 확인해보세요.</p></section>
       {pets.length === 0 ? <EmptyPets /> : <>
         <section className="home-section my-pets-section" id="my-pets">
           <div className="section-heading"><h2>내 새꾸 <span aria-hidden>🐾</span></h2><Link className="add-pet-cta" href="/pets/new">＋ 새꾸 추가</Link></div>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "@/lib/auth/client";
+import { invokeFunction } from "@/lib/supabase/functions";
 
 export function AccountSignOutButton() {
   const [loading, setLoading] = useState(false);
@@ -31,8 +32,9 @@ export function AccountDeleteButton() {
     if (!confirmed) return;
 
     setLoading(true);
-    const response = await fetch("/api/account", { method: "DELETE" });
-    if (!response.ok) {
+    try {
+      await invokeFunction<{ ok: boolean }>("account");
+    } catch {
       setLoading(false);
       window.alert("계정탈퇴 처리 중 문제가 발생했어요. 잠시 후 다시 시도해 주세요.");
       return;

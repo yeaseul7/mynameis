@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { invokeFunction } from "@/lib/supabase/functions";
 
 export function FriendInviteForm() {
   const [inviteCode, setInviteCode] = useState("");
@@ -14,18 +15,15 @@ export function FriendInviteForm() {
     setMessage("");
     setLoading(true);
 
-    const response = await fetch("/api/friends", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ inviteCode }),
-    });
-    const data = await response.json().catch(() => ({})) as { message?: string; name?: string };
-    setLoading(false);
-
-    if (!response.ok) {
-      setMessage(data.message ?? "친구를 추가하지 못했어요.");
+    let data: { name?: string };
+    try {
+      data = await invokeFunction("friends", { action: "add", inviteCode });
+    } catch (error) {
+      setLoading(false);
+      setMessage(error instanceof Error ? error.message : "친구를 추가하지 못했어요.");
       return;
     }
+    setLoading(false);
 
     setMessage(`${data.name ?? "친구"}를 추가했어요.`);
     router.push("/");

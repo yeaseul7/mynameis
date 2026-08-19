@@ -2,6 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { KOREA_REGION_OPTIONS, KOREA_SIDO_OPTIONS } from "@/lib/regions/korea-administrative-districts";
+import { invokeFunction } from "@/lib/supabase/functions";
 
 type KoreaSido = keyof typeof KOREA_REGION_OPTIONS;
 
@@ -65,18 +66,12 @@ export function LostLocationModal({
     setSaving(true);
     setError("");
     try {
-      const response = await fetch(`/api/dogs/${dogId}/lost-location`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          lostAt,
-          lostLocationDistrict,
-          lostLocationNeighborhood: lostNeighborhood || null,
-          lostLocationDetail: lostDetail || null,
-        }),
+      const result = await invokeFunction<LostLocationSnapshot>("dogs", {
+        action: "lost-location", dogId, lostAt, lostLocationDistrict,
+        lostLocationNeighborhood: lostNeighborhood || null,
+        lostLocationDetail: lostDetail || null,
       });
-      if (!response.ok) throw new Error("save failed");
-      onSaved(await response.json());
+      onSaved(result);
       onClose();
     } catch {
       setError("실종 위치와 시간을 저장하지 못했어요.");

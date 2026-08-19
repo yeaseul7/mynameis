@@ -1,10 +1,20 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
-import { getCurrentUser } from "@/lib/auth/server";
+import { useEffect, useState } from "react";
+import type { User } from "@supabase/supabase-js";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { UserMenu } from "./user-menu";
 
-export async function Header() {
-  const user = await getCurrentUser();
+export function Header() {
+  const [user, setUser] = useState<User | null>(null);
+  useEffect(() => {
+    const supabase = createBrowserSupabaseClient();
+    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => setUser(session?.user ?? null));
+    return () => data.subscription.unsubscribe();
+  }, []);
 
   return (
     <header className="site-header">

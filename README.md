@@ -1,6 +1,6 @@
 # mynameis
 
-모바일 우선 프로필 링크 서비스. Next.js App Router와 Supabase Auth를 사용합니다.
+모바일 우선 프로필 링크 서비스. Vite SPA, Supabase Auth/DB/Storage/Edge Functions를 사용합니다.
 
 ## 실행
 
@@ -19,7 +19,22 @@ Supabase 프로젝트의 Authentication > Providers에서 Google과 Kakao를 활
 - Google/Kakao 콘솔의 콜백 URL: Supabase가 안내하는 `/auth/v1/callback` URL
 - 이메일 가입 확인 사용 시 Email provider의 Confirm email 활성화
 
-`/share/[slug]`는 미들웨어에서 차단하지 않는 공개 링크입니다. 실제 프로필 데이터 연결 시에도 이 경로의 조회 정책은 공개 프로필만 허용하도록 RLS를 구성하세요.
+`/share/:slug`는 공개 링크입니다. 공개 프로필 조회 범위는 RLS와 공개 토큰으로 제한합니다.
+
+## Edge Functions 배포
+
+```bash
+npx supabase login
+npx supabase link --project-ref amwrvrbbmnqnzbjjemmt
+npx supabase secrets set KAKAO_REST_API_KEY=발급받은_REST_API_KEY
+npx supabase functions deploy account
+npx supabase functions deploy dogs
+npx supabase functions deploy friends
+npx supabase functions deploy share
+npx supabase functions deploy kakao-hospitals
+```
+
+`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`는 함수 실행 환경에 자동 제공되므로 프론트 환경 파일에 넣지 않습니다.
 
 ## Supabase 반려동물 사진 저장소
 

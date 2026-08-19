@@ -1,144 +1,80 @@
-import { LoggedHome } from "@/components/logged-home";
-import { LandingPreviewCarousel } from "@/components/landing-preview-carousel";
-import { getCurrentUser } from "@/lib/auth/server";
 import Image from "next/image";
 import Link from "next/link";
+import { LandingScrollMotion } from "@/components/landing-scroll-motion";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://mynameis.life";
 
 function LandingStructuredData() {
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "WebApplication",
-    name: "mynameis",
-    url: siteUrl,
-    applicationCategory: "LifestyleApplication",
-    operatingSystem: "Web",
-    description: "반려견의 돌봄 정보와 실종 정보를 QR 이름표 링크 하나로 준비하고 공유하는 서비스입니다.",
-    offers: {
-      "@type": "Offer",
-      price: "0",
-      priceCurrency: "KRW",
-    },
-  };
-
-  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />;
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ "@context": "https://schema.org", "@type": "WebApplication", name: "mynameis", url: siteUrl, applicationCategory: "LifestyleApplication", operatingSystem: "Web", description: "반려견의 돌봄 정보와 실종 정보를 하나의 QR 이름표로 준비하고 공유하는 서비스입니다.", offers: { "@type": "Offer", price: "0", priceCurrency: "KRW" } }) }} />;
 }
 
-function NameTagIllustration() {
+export function GuestHome() {
   return (
-    <div className="guest-visual" aria-label="얼리의 이름표 미리보기">
-      <div className="mobile-preview-frame">
-        <Image
-          src="/landing-earlys-profile.jpeg"
-          alt="얼리의 모바일 이름표 예시 화면"
-          width={1206}
-          height={2052}
-          priority
-        />
-      </div>
-    </div>
-  );
-}
-
-function GuestHome() {
-  return (
-    <main className="guest-page">
+    <main className="minimal-landing">
       <LandingStructuredData />
-      <section className="guest-home">
-        <NameTagIllustration />
-        <div className="guest-copy">
-          <Link className="guest-hero-logo-link" href="/" aria-label="mynameis 홈">
-            <Image className="guest-hero-logo" src="/mynameis-logo.png" alt="mynameis" width={92} height={31} priority />
-          </Link>
-          <h1>맡길 때도,<br />잃어버렸을 때도<br />바로 정보가 닿아요.</h1>
-          <p className="guest-lead">반려견 정보를 담은 이름표 링크를 만들고 QR로 공유해요.</p>
-          <div className="guest-actions">
-            <a className="guest-primary-cta" href="/login">우리 아이만의 QR 만들기</a>
+      <LandingScrollMotion />
+
+      <section className="minimal-hero">
+        <div className="minimal-hero-copy">
+          <p className="minimal-kicker">반려견을 위한 디지털 이름표</p>
+          <h1>우리 아이의 정보를<br />하나의 이름표에.</h1>
+          <p>돌봄 정보부터 실종 연락까지.<br />링크와 QR로 바로 공유하세요.</p>
+          <Link className="minimal-cta" href="/login">무료로 이름표 만들기 <span aria-hidden="true">›</span></Link>
+          <small>3분이면 완성 · 설치 없이 바로 공유 · 무료 시작</small>
+        </div>
+        <div className="minimal-hero-product">
+          <div className="minimal-product-glow" aria-hidden="true" />
+          <div className="minimal-phone">
+            <Image src="/landing-earlys-profile.jpeg" alt="반려견 얼리의 디지털 이름표 화면" width={1206} height={2052} priority />
           </div>
         </div>
       </section>
 
-      <section className="landing-band problem-band" aria-labelledby="problem-title">
-        <div className="landing-inner">
-          <h2 className="problem-title" id="problem-title">반려동물 정보가 필요한 모든 순간에</h2>
-          <Image className="problem-moment-icon" src="/problem-moment-icon.png" alt="" width={240} height={240} />
-          <div className="insight-grid">
-            <article>
-              <Image className="problem-card-icon" src="/problem-icon-handoff.png" alt="" width={120} height={120} />
-              <h3>맡길 때마다 반복되는 정보 전달</h3>
-              <p>호텔, 유치원, 병원, 지인에게 맡길 때마다<br />성격, 알레르기, 식사, 산책 습관을 다시 설명해야 해요.</p>
-            </article>
-            <article>
-              <Image className="problem-card-icon" src="/problem-icon-tag.png" alt="" width={120} height={120} />
-              <h3>이름표와 내장칩 사이의 정보 공백</h3>
-              <p>목걸이에는 전화번호 정도만 적을 수 있고,<br />내장칩은 발견자가 바로 확인하기 어려워요.</p>
-            </article>
-            <article>
-              <Image className="problem-card-icon" src="/problem-icon-lost.png" alt="" width={120} height={120} />
-              <h3>실종 순간, 새로 만들 시간이 없음</h3>
-              <p>잃어버린 뒤에 사진을 찾고 특징과 연락처를 정리해 실종 글을 만들기엔 너무 늦어요.</p>
-            </article>
-            <article>
-              <Image className="problem-card-icon" src="/problem-icon-map.png" alt="" width={120} height={120} />
-              <h3>제보가 여러 곳에 흩어짐</h3>
-              <p>전화, 문자, SNS 댓글로 들어오는 목격 정보가 흩어져<br />이동 경로를 파악하기 어려워요.</p>
-            </article>
-          </div>
+      <section className="minimal-showcase">
+        <div className="minimal-heading scroll-reveal">
+          <p>필요한 순간, 바로.</p>
+          <h2>맡길 때도.<br />혹시 잃어버렸을 때도.</h2>
+          <span>필요한 정보가 정확한 사람에게 바로 닿습니다.</span>
+        </div>
+        <div className="minimal-screen-stage">
+          <div className="minimal-screen lost-screen"><Image src="/landing-lost-share-preview.jpg" alt="반려견 실종 정보 공유 화면" width={1205} height={2048} /></div>
+          <div className="minimal-screen main-screen"><Image src="/landing-share-page-preview.jpeg" alt="반려견 돌봄 정보 공유 화면" width={1080} height={1920} /></div>
+          <div className="minimal-screen report-screen"><Image src="/landing-lost-info-preview-v2.png" alt="반려견 목격 위치 제보 화면" width={860} height={1404} /></div>
         </div>
       </section>
 
-      <section className="landing-band solution-band" aria-labelledby="solution-title">
-        <div className="landing-inner split-section">
-          <div className="solution-keyring-visual">
-            <Image className="solution-keyring-image" src="/landing-keyring-qr.png" alt="QR 키링 예시" width={520} height={520} />
-            <Image className="solution-sticker-image" src="/landing-sticker-qr.png" alt="QR 스티커 예시" width={1280} height={1280} />
-          </div>
-          <div>
-            <h2 id="solution-title">돌봄용 링크와 QR 그리고<br />실종용 링크와 QR을<br />쉽게 만들고 공유해요</h2>
-            <p>QR로 저장해서 공유하거나 스티커로 제작하거나 키링으로 제작할 수 있어요.</p>
-          </div>
+      <section className="minimal-uses">
+        <article className="minimal-use-card care-use scroll-reveal reveal-left">
+          <div><p>돌봄 정보</p><h2>말로 설명하던 모든 것을<br />한눈에.</h2><span>식사, 알레르기, 산책 습관과 병원 정보를 필요한 만큼만 공유하세요.</span></div>
+          <Image src="/landing-share-page-preview.jpeg" alt="돌봄 정보 페이지 예시" width={1080} height={1920} />
+        </article>
+        <article className="minimal-use-card lost-use scroll-reveal reveal-right">
+          <div><p>실종 정보</p><h2>발견한 사람이<br />바로 연락할 수 있게.</h2><span>사진과 특징, 보호자 연락처를 미리 준비하고 위치 제보를 한곳에서 확인하세요.</span></div>
+          <Image src="/landing-lost-share-preview.jpg" alt="실종 정보 페이지 예시" width={1205} height={2048} />
+        </article>
+      </section>
+
+      <section className="minimal-qr">
+        <div className="minimal-qr-copy scroll-reveal reveal-left">
+          <p>링크로 보내고. QR로 곁에.</p>
+          <h2>내용이 바뀌어도<br />이름표는 그대로.</h2>
+          <span>휴대폰으로 공유하거나 QR을 저장해 키링과 스티커로 활용하세요.</span>
+        </div>
+        <div className="minimal-qr-products scroll-reveal reveal-right">
+          <Image className="minimal-keyring" src="/landing-keyring-qr.png" alt="QR 키링 예시" width={520} height={520} />
+          <Image className="minimal-sticker" src="/landing-sticker-qr.png" alt="QR 스티커 예시" width={1280} height={1280} />
         </div>
       </section>
 
-      <section className="landing-band preview-band" id="preview" aria-labelledby="preview-title">
-        <div className="landing-inner preview-layout">
-          <div>
-            <h2 id="preview-title">상황에 맞는 공유 페이지를 준비해요.</h2>
-            <p>기본 프로필부터 돌봄 정보, 실종 정보까지 필요한 내용만 골라 QR과 링크로 공유할 수 있어요.</p>
-          </div>
-          <LandingPreviewCarousel />
-        </div>
+      <section className="minimal-final scroll-reveal">
+        <p>우리 아이를 위한 작은 준비.</p>
+        <h2>다정한 이름표를<br />지금 만들어보세요.</h2>
+        <Link className="minimal-cta" href="/login">무료로 시작하기 <span aria-hidden="true">›</span></Link>
       </section>
 
-      <section className="landing-band trust-band">
-        <div className="landing-inner">
-          <a className="final-cta" href="/login">무료로 우리 아이 이름표 만들기</a>
-        </div>
-      </section>
-
-      <footer className="guest-footer">
-        <div className="landing-inner">
-          <Link href="/" aria-label="mynameis 홈">
-            <Image src="/mynameis-logo.png" alt="mynameis" width={82} height={28} />
-          </Link>
-          <nav aria-label="하단 링크">
-            <a href="/terms">이용약관</a>
-            <a href="/privacy">개인정보처리방침</a>
-            <a href="mailto:sientobiz@gmail.com">문의하기</a>
-          </nav>
-          <p>© mynameis. All rights reserved.</p>
-        </div>
-      </footer>
+      <footer className="guest-footer"><div className="landing-inner"><Link href="/" aria-label="mynameis 홈"><Image src="/mynameis-logo.png" alt="mynameis" width={82} height={28} /></Link><nav aria-label="하단 링크"><a href="/terms">이용약관</a><a href="/privacy">개인정보처리방침</a><a href="mailto:sientobiz@gmail.com">문의하기</a></nav><p>© mynameis</p></div></footer>
     </main>
   );
 }
 
-export default async function Home() {
-  const user = await getCurrentUser();
-
-  if (!user) return <GuestHome />;
-
-  const userName = user.user_metadata?.name ?? user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? "보호자";
-  return <LoggedHome userId={user.id} userName={userName} />;
-}
+export default GuestHome;

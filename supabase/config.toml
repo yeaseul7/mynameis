@@ -1,0 +1,12 @@
+project_id = "amwrvrbbmnqnzbjjemmt"
+
+[functions.account]
+verify_jwt = false
+[functions.dogs]
+verify_jwt = false
+[functions.friends]
+verify_jwt = false
+[functions.share]
+verify_jwt = false
+[functions.kakao-hospitals]
+verify_jwt = false

@@ -21,7 +21,7 @@ async function insertDogWithInviteCode(supabase: SupabaseClient, ownerId: string
 
 async function addDogPhotos(
   supabase: SupabaseClient,
-  input: { ownerId: string; dogId: string; existingPhotoCount: number; files: File[] },
+  input: { ownerId: string; dogId: string; nextSortOrder: number; makeFirstPrimary?: boolean; files: File[] },
 ) {
   const uploadedKeys: string[] = [];
   try {
@@ -34,8 +34,8 @@ async function addDogPhotos(
         ownerId: input.ownerId,
         storageKey: uploaded.storageKey,
         imageUrl: uploaded.publicUrl,
-        sortOrder: input.existingPhotoCount + index,
-        isPrimary: input.existingPhotoCount === 0 && index === 0,
+        sortOrder: input.nextSortOrder + index,
+        isPrimary: Boolean(input.makeFirstPrimary) && index === 0,
         originalName: file.name,
         mimeType: file.type,
         fileSize: file.size,
@@ -54,7 +54,7 @@ export async function createDogBasicProfile(
 ) {
   const dogId = await insertDogWithInviteCode(supabase, input.ownerId, input.profile);
   try {
-    await addDogPhotos(supabase, { ownerId: input.ownerId, dogId, existingPhotoCount: 0, files: input.files });
+    await addDogPhotos(supabase, { ownerId: input.ownerId, dogId, nextSortOrder: 0, makeFirstPrimary: true, files: input.files });
     return dogId;
   } catch (error) {
     await deleteDog(supabase, dogId);
@@ -80,9 +80,21 @@ export async function saveDogBasicProfile(
     await deleteDogImages(supabase, input.deletedPhotos.map((photo) => photo.storageKey).filter(Boolean) as string[]);
   }
 
-  await addDogPhotos(supabase, { ownerId: input.ownerId, dogId: input.dogId, existingPhotoCount: input.keptPhotos.length, files: input.files });
+  const deletedPrimary = input.deletedPhotos.some((photo) => photo.isPrimary);
+  const nextSortOrder = input.keptPhotos.length
+    ? Math.max(...input.keptPhotos.map((photo) => photo.sortOrder)) + 1
+    : 0;
+  const newPhotoBecomesPrimary = input.files.length > 0 && (deletedPrimary || input.keptPhotos.length === 0);
 
-  const needsPrimary = input.keptPhotos.length && !input.keptPhotos.some((photo) => photo.isPrimary);
+  await addDogPhotos(supabase, {
+    ownerId: input.ownerId,
+    dogId: input.dogId,
+    nextSortOrder,
+    makeFirstPrimary: newPhotoBecomesPrimary,
+    files: input.files,
+  });
+
+  const needsPrimary = !newPhotoBecomesPrimary && input.keptPhotos.length && !input.keptPhotos.some((photo) => photo.isPrimary);
   const firstPhotoId = input.keptPhotos[0]?.id;
   if (needsPrimary && firstPhotoId) await setPrimaryDogPhoto(supabase, firstPhotoId);
 }
@@ -124,7 +136,7 @@ export async function createDogProfile(
   const dogId = await insertDogWithInviteCode(supabase, input.ownerId, input.profile);
   try {
     await upsertDogCareProfile(supabase, input.ownerId, dogId, input.careProfile);
-    await addDogPhotos(supabase, { ownerId: input.ownerId, dogId, existingPhotoCount: 0, files: input.files });
+    await addDogPhotos(supabase, { ownerId: input.ownerId, dogId, nextSortOrder: 0, makeFirstPrimary: true, files: input.files });
     return dogId;
   } catch (error) {
     await deleteDog(supabase, dogId);

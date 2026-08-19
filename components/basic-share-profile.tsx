@@ -4,14 +4,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import QRCode from "qrcode";
-import { useState } from "react";
+import { type MouseEvent, type ReactNode, useEffect, useState } from "react";
+import type { IconType } from "react-icons";
 import { FaCheckCircle, FaRegCircle } from "react-icons/fa";
+import { RiAlarmWarningLine, RiAlertLine, RiCapsuleLine, RiFileTextLine, RiHeart3Line, RiHomeSmileLine, RiHospitalLine, RiMapPinLine, RiPhoneLine, RiPrinterLine, RiRestaurantLine, RiSchoolLine, RiShieldCheckLine, RiStickyNoteLine } from "react-icons/ri";
 import { FoundLocationReports, type FoundLocationReport } from "@/components/found-location-reports";
 import { Guestbook, type GuestbookEntry } from "@/components/guestbook";
 import { LostLocationModal, type LostLocationSnapshot } from "@/components/lost-location-modal";
 import type { DogProfile } from "@/lib/dogs";
 import { normalizeInstagramUsername } from "@/lib/pets/validation";
 import type { DogPublicLinkType } from "@/lib/pets/types";
+import { invokeFunction } from "@/lib/supabase/functions";
 
 type ShareMode = "basic" | "care" | "lost";
 
@@ -46,6 +49,10 @@ function BooleanValue({ value, trueLabel, falseLabel }: { value: boolean | null 
       <span>{label}</span>
     </span>
   );
+}
+
+function InfoLabel({ icon: Icon, children }: { icon: IconType; children: ReactNode }) {
+  return <span className="info-label"><Icon aria-hidden="true" /><span>{children}</span></span>;
 }
 
 function getNeuteringLabel(status: DogProfile["neuteringStatus"]) {
@@ -113,7 +120,7 @@ export function BasicShareProfile({
     lostLocationNeighborhood: care?.lostLocationNeighborhood ?? null,
     lostLocationDetail: care?.lostLocationDetail ?? null,
   });
-  const activeTab = mode === "lost" ? "lost" : "care";
+  const [activeTab, setActiveTab] = useState<"lost" | "care">(mode === "lost" ? "lost" : "care");
   const lostLocationLabel = [lostSnapshot.lostLocationDistrict, lostSnapshot.lostLocationNeighborhood, lostSnapshot.lostLocationDetail].filter(Boolean).join(" ") || lostSnapshot.lostLocationAddress || "미입력";
   const hasLostReportDetails = Boolean(lostSnapshot.lostAt || lostSnapshot.lostLocationDistrict || lostSnapshot.lostLocationNeighborhood || lostSnapshot.lostLocationDetail || lostSnapshot.lostLocationAddress);
   const primaryContact = care?.emergencyContact1?.replace(/[^\d+]/g, "") ?? "";
@@ -126,6 +133,23 @@ export function BasicShareProfile({
     { label: "중성화", value: getNeuteringLabel(dog.neuteringStatus) },
   ];
 
+  useEffect(() => {
+    function syncTabWithUrl() {
+      const currentToken = decodeURIComponent(location.pathname.split("/").filter(Boolean).at(-1) ?? "");
+      if (currentToken === links.LOST) setActiveTab("lost");
+      if (currentToken === links.CARE) setActiveTab("care");
+    }
+    window.addEventListener("popstate", syncTabWithUrl);
+    return () => window.removeEventListener("popstate", syncTabWithUrl);
+  }, [links.CARE, links.LOST]);
+
+  function switchInfoTab(event: MouseEvent<HTMLAnchorElement>, tab: "lost" | "care", token: string) {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    window.history.pushState({}, "", `/share/${token}`);
+    setActiveTab(tab);
+  }
+
   function movePhoto(direction: -1 | 1) {
     if (photos.length < 2) return;
     setActivePhotoIndex((current) => (current + direction + photos.length) % photos.length);
@@ -135,12 +159,7 @@ export function BasicShareProfile({
     const confirmed = window.confirm("정말 종료하시겠습니까?\n잔여 기록이 모두 삭제됩니다.");
     if (!confirmed) return;
 
-    const response = await fetch(`/api/dogs/${dog.id}/lost-location`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ endReport: true }),
-    });
-    if (!response.ok) return;
+    try { await invokeFunction("dogs", { action: "lost-location", dogId: dog.id, endReport: true }); } catch { return; }
     const emptyLostSnapshot: LostLocationSnapshot = {
       lostAt: null,
       lostLocationAddress: null,
@@ -156,8 +175,9 @@ export function BasicShareProfile({
     if (!confirmed) return;
 
     setDeleteStatus("deleting");
-    const response = await fetch(`/api/dogs/${dog.id}`, { method: "DELETE" });
-    if (!response.ok) {
+    try {
+      await invokeFunction("dogs", { action: "delete", dogId: dog.id });
+    } catch {
       setDeleteStatus("failed");
       return;
     }
@@ -176,17 +196,11 @@ export function BasicShareProfile({
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
-          const response = await fetch(`/api/share/${slug}/found-location`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude,
-              accuracy: position.coords.accuracy,
-              note: locationReportNote,
-            }),
+          await invokeFunction("share", {
+            action: "found-location", slug, latitude: position.coords.latitude,
+            longitude: position.coords.longitude, accuracy: position.coords.accuracy,
+            note: locationReportNote,
           });
-          if (!response.ok) throw new Error("save failed");
           setLocationShareStatus("shared");
           setLocationReportOpen(false);
           setLocationReportNote("");
@@ -200,7 +214,8 @@ export function BasicShareProfile({
   }
 
   async function savePoster() {
-    const shareUrl = `${window.location.origin}/share/${slug}`;
+    const activeSlug = activeTab === "lost" ? links.LOST ?? slug : links.CARE ?? slug;
+    const shareUrl = `${window.location.origin}/share/${activeSlug}`;
     const qrImage = await QRCode.toDataURL(shareUrl, { width: 260, margin: 1, errorCorrectionLevel: "H", color: { dark: "#3F392F", light: "#FFFFFF" } });
     const isLostPoster = activeTab === "lost";
     const posterTitle = isLostPoster ? `${dog.name} 실종 정보` : `${dog.name} 돌봄 정보`;
@@ -287,12 +302,7 @@ export function BasicShareProfile({
   }
 
   return (
-    <section className={`basic-share-profile${mode === "lost" ? " has-lost-remote" : ""}`}>
-      {canEdit && !hasLostReportDetails ? (
-        <div className="basic-share-topbar">
-          <button className="lost-place-button" type="button" onClick={() => setLostModalOpen(true)}>실종등록</button>
-        </div>
-      ) : null}
+    <section className={`basic-share-profile${activeTab === "lost" ? " has-lost-remote" : ""}`}>
       <div className="basic-share-hero">
         {activePhoto ? (
           <>
@@ -309,11 +319,14 @@ export function BasicShareProfile({
           </div>
         ) : null}
         <div className="basic-share-overlay">
-          <a className="basic-share-brand" href="/" aria-label="mynameis 홈">
-            <Image className="wordmark-logo" src="/mynameis-logo.png" alt="mynameis" width={96} height={33} />
-          </a>
+          <div className="basic-share-header">
+            <a className="basic-share-brand" href="/" aria-label="mynameis 홈">
+              <Image className="wordmark-logo" src="/mynameis-logo.png" alt="mynameis" width={96} height={33} />
+            </a>
+            <button className="share-print-button" type="button" aria-label="인쇄" title="인쇄" onClick={() => void savePoster()}><RiPrinterLine aria-hidden="true" /></button>
+          </div>
           <div className="basic-share-copy">
-            {hasLostReportDetails ? <p className="lost-status-message">현재 실종된 상태입니다.</p> : null}
+            {hasLostReportDetails ? <p className="lost-status-message"><RiAlarmWarningLine aria-hidden="true" />현재 실종된 상태입니다.</p> : null}
             <div className="basic-share-title">
               <h1>{dog.name}</h1>
               <b>{dog.breed}</b>
@@ -338,44 +351,60 @@ export function BasicShareProfile({
 
       <div className="basic-share-body">
         {canEdit ? (
-          <div className="basic-info-tabs" role="tablist" aria-label={`${dog.name} 추가 정보`}>
-            {links.LOST ? <Link role="tab" aria-selected={activeTab === "lost"} href={`/share/${links.LOST}`}>실종</Link> : null}
-            {links.CARE ? <Link role="tab" aria-selected={activeTab === "care"} href={`/share/${links.CARE}`}>돌봄</Link> : null}
+          <div className="basic-info-tabs" role="tablist" aria-label={`${dog.name} 추가 정보`} data-active={activeTab}>
+            <span className="basic-info-tab-slider" aria-hidden="true" />
+            {links.LOST ? <Link role="tab" aria-selected={activeTab === "lost"} href={`/share/${links.LOST}`} onClick={(event) => switchInfoTab(event, "lost", links.LOST!)}><RiAlarmWarningLine aria-hidden="true" />실종</Link> : null}
+            {links.CARE ? <Link role="tab" aria-selected={activeTab === "care"} href={`/share/${links.CARE}`} onClick={(event) => switchInfoTab(event, "care", links.CARE!)}><RiHeart3Line aria-hidden="true" />돌봄</Link> : null}
           </div>
         ) : null}
         <section className="basic-tab-panel">
           {activeTab === "lost" ? (
             <>
               <h2>실종 정보</h2>
-              {canEdit && hasLostReportDetails ? <button className="end-lost-report-button" type="button" onClick={() => void endLostReport()}>실종 신고 종료</button> : null}
+              {canEdit && !hasLostReportDetails ? <button className="lost-place-button lost-info-register-button" type="button" onClick={() => setLostModalOpen(true)}>실종 등록</button> : null}
+              {hasLostReportDetails ? (
+                <div className="lost-summary-card">
+                  <div className="lost-summary-item">
+                    <RiAlarmWarningLine aria-hidden="true" />
+                    <div><span>실종 일시</span><strong>{getDateTimeLabel(lostSnapshot.lostAt)}</strong></div>
+                  </div>
+                  <div className="lost-summary-item">
+                    <RiMapPinLine aria-hidden="true" />
+                    <div><span>마지막 확인 위치</span><strong>{lostLocationLabel}</strong></div>
+                  </div>
+                  {canEdit ? (
+                    <div className="lost-summary-actions">
+                      <button className="edit-lost-report-button" type="button" onClick={() => setLostModalOpen(true)}>실종 정보 수정</button>
+                      <button className="end-lost-report-button" type="button" onClick={() => void endLostReport()}>실종 신고 종료</button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
               {canEdit && foundLocationReports.length > 0 ? <FoundLocationReports reports={foundLocationReports} kakaoKey={kakaoMapKey} /> : null}
               {canEdit ? (
                 <>
-                  <dl><dt>긴급 연락처1</dt><dd>{care?.emergencyContact1 || "미입력"}</dd></dl>
-                  <dl><dt>긴급 연락처2</dt><dd>{care?.emergencyContact2 || "미입력"}</dd></dl>
+                  <dl><dt><InfoLabel icon={RiPhoneLine}>긴급 연락처1</InfoLabel></dt><dd>{care?.emergencyContact1 || "미입력"}</dd></dl>
+                  <dl><dt><InfoLabel icon={RiPhoneLine}>긴급 연락처2</InfoLabel></dt><dd>{care?.emergencyContact2 || "미입력"}</dd></dl>
                 </>
               ) : null}
-              <dl><dt>실종 시간</dt><dd>{getDateTimeLabel(lostSnapshot.lostAt)}</dd></dl>
-              <dl><dt>실종지</dt><dd>{lostLocationLabel}</dd></dl>
-              <dl><dt>복용약 여부</dt><dd><BooleanValue value={care?.takesMedication} trueLabel="있어요" falseLabel="없어요" /></dd></dl>
-              <dl><dt>주치 병원</dt><dd>{care?.primaryHospital || "미입력"}</dd></dl>
-              {care?.primaryHospitalAddress ? <dl><dt>병원 주소</dt><dd>{care.primaryHospitalAddress}</dd></dl> : null}
-              {care?.primaryHospitalPhone ? <dl><dt>병원 전화</dt><dd>{care.primaryHospitalPhone}</dd></dl> : null}
-              <dl><dt>특이사항</dt><dd>{care?.emergencyNote || "미입력"}</dd></dl>
+              <dl><dt><InfoLabel icon={RiCapsuleLine}>복용약 여부</InfoLabel></dt><dd><BooleanValue value={care?.takesMedication} trueLabel="있어요" falseLabel="없어요" /></dd></dl>
+              <dl><dt><InfoLabel icon={RiHospitalLine}>주치 병원</InfoLabel></dt><dd>{care?.primaryHospital || "미입력"}</dd></dl>
+              {care?.primaryHospitalAddress ? <dl><dt><InfoLabel icon={RiMapPinLine}>병원 주소</InfoLabel></dt><dd>{care.primaryHospitalAddress}</dd></dl> : null}
+              {care?.primaryHospitalPhone ? <dl><dt><InfoLabel icon={RiPhoneLine}>병원 전화</InfoLabel></dt><dd>{care.primaryHospitalPhone}</dd></dl> : null}
+              <dl><dt><InfoLabel icon={RiFileTextLine}>특이사항</InfoLabel></dt><dd>{care?.emergencyNote || "미입력"}</dd></dl>
               <p className="lost-contact-notice">
-                연락처는 화면에 바로 보이지 않아요.<br />
-                하단의 전화하기 버튼을 누르면 보호자에게 바로 연결돼요.
+                연락처는 화면에 바로 보이지 않아요.
               </p>
             </>
           ) : (
             <>
               <h2>돌봄 정보</h2>
-              <dl><dt>1일 식사 횟수</dt><dd>{care?.mealsPerDay ? `${care.mealsPerDay}회` : "미입력"}</dd></dl>
-              <dl><dt>마킹 여부</dt><dd><BooleanValue value={care?.marksIndoors} trueLabel="해요" falseLabel="안 해요" /></dd></dl>
-              <dl><dt>5차 필수 접종</dt><dd><BooleanValue value={care?.fifthVaccineDone} trueLabel="완료" falseLabel="미완료" /></dd></dl>
-              <dl><dt>유치원 경험</dt><dd><BooleanValue value={care?.daycareExperience} trueLabel="있어요" falseLabel="없어요" /></dd></dl>
-              <dl><dt>알러지 여부</dt><dd><BooleanValue value={care?.hasAllergy} trueLabel="있어요" falseLabel="없어요" /></dd></dl>
-              <dl><dt>전달 메모</dt><dd>{care?.handoffMemo || "미입력"}</dd></dl>
+              <dl><dt><InfoLabel icon={RiRestaurantLine}>1일 식사 횟수</InfoLabel></dt><dd>{care?.mealsPerDay ? `${care.mealsPerDay}회` : "미입력"}</dd></dl>
+              <dl><dt><InfoLabel icon={RiHomeSmileLine}>마킹 여부</InfoLabel></dt><dd><BooleanValue value={care?.marksIndoors} trueLabel="해요" falseLabel="안 해요" /></dd></dl>
+              <dl><dt><InfoLabel icon={RiShieldCheckLine}>5차 필수 접종</InfoLabel></dt><dd><BooleanValue value={care?.fifthVaccineDone} trueLabel="완료" falseLabel="미완료" /></dd></dl>
+              <dl><dt><InfoLabel icon={RiSchoolLine}>유치원 경험</InfoLabel></dt><dd><BooleanValue value={care?.daycareExperience} trueLabel="있어요" falseLabel="없어요" /></dd></dl>
+              <dl><dt><InfoLabel icon={RiAlertLine}>알러지 여부</InfoLabel></dt><dd><BooleanValue value={care?.hasAllergy} trueLabel="있어요" falseLabel="없어요" /></dd></dl>
+              <dl><dt><InfoLabel icon={RiStickyNoteLine}>전달 메모</InfoLabel></dt><dd>{care?.handoffMemo || "미입력"}</dd></dl>
             </>
           )}
         </section>
@@ -393,23 +422,25 @@ export function BasicShareProfile({
         ) : (
           <div className="basic-photo-empty">대표사진 외 등록된 사진이 없어요.</div>
         )}
-        <button className="poster-save-button" type="button" onClick={() => void savePoster()}>포스터 저장하기</button>
-        <Guestbook slug={slug} dogName={dog.name} initialEntries={guestbookEntries} canWrite={canWriteGuestbook} />
+        <Guestbook slug={slug} dogId={dog.id} dogName={dog.name} initialEntries={guestbookEntries} canWrite={canWriteGuestbook} />
         {canEdit ? (
-          <button className="delete-my-dog-button" type="button" onClick={() => void deleteMyDog()} disabled={deleteStatus === "deleting"}>
-            {deleteStatus === "deleting" ? "삭제 중..." : "내새꾸삭제"}
-          </button>
+          <div className="basic-owner-actions">
+            <Link className="basic-edit-button" href={`/pets/${dog.id}/edit`}>수정하기</Link>
+            <button className="delete-my-dog-button" type="button" onClick={() => void deleteMyDog()} disabled={deleteStatus === "deleting"}>
+              {deleteStatus === "deleting" ? "삭제 중..." : "내새꾸삭제"}
+            </button>
+          </div>
         ) : null}
         {deleteStatus === "failed" ? <p className="delete-my-dog-error" role="alert">삭제하지 못했어요. 잠시 후 다시 시도해 주세요.</p> : null}
         <Link className="made-with" href="/">made with <b>mynameis</b></Link>
       </div>
-      {mode === "lost" ? (
+      {activeTab === "lost" ? (
         <footer className="share-remote-footer" aria-label="빠른 연락">
           {primaryContact ? <a href={`tel:${primaryContact}`}>전화하기</a> : <span aria-disabled="true">전화하기</span>}
           <button type="button" onClick={() => setLocationReportOpen(true)} disabled={locationShareStatus === "sharing"}>
             {locationShareStatus === "sharing" ? "공유 중" : locationShareStatus === "shared" ? "공유 완료" : locationShareStatus === "failed" ? "다시 공유" : "현위치 공유"}
           </button>
-          {instagramUrl ? <a href={instagramUrl} target="_blank" rel="noopener noreferrer">인스타</a> : <span aria-disabled="true">인스타</span>}
+          {instagramUrl ? <a className="instagram-footer-link" href={instagramUrl} target="_blank" rel="noopener noreferrer"><Image src="/social/instagram-icon.png" alt="" width={18} height={18} />인스타</a> : <span className="instagram-footer-link" aria-disabled="true"><Image src="/social/instagram-icon.png" alt="" width={18} height={18} />인스타</span>}
         </footer>
       ) : null}
       {locationReportOpen ? (
