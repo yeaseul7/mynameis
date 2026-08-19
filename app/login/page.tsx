@@ -12,7 +12,7 @@ export default function LoginPage() {
         <a className="login-contact" href="https://mail.google.com/mail/?view=cm&fs=1&to=sientobiz@gmail.com&su=mynameis%20문의" target="_blank" rel="noreferrer">문의하기</a>
         <div className="login-intro">
           <Link className="login-brand" href="/">
-            <Image className="wordmark-logo" src="/mynameis-logo.png" alt="mynameis" width={170} height={59} priority />
+            <Image className="wordmark-logo" src="/mynameis-logo-240.png" alt="mynameis" width={170} height={59} priority />
           </Link>
           <p>우리 아이의 다정한 이름표</p>
           <h1>반가워요!</h1>

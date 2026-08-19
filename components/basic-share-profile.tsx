@@ -321,7 +321,7 @@ export function BasicShareProfile({
         <div className="basic-share-overlay">
           <div className="basic-share-header">
             <a className="basic-share-brand" href="/" aria-label="mynameis 홈">
-              <Image className="wordmark-logo" src="/mynameis-logo.png" alt="mynameis" width={96} height={33} />
+              <Image className="wordmark-logo" src="/mynameis-logo-240.png" alt="mynameis" width={96} height={33} />
             </a>
             <button className="share-print-button" type="button" aria-label="인쇄" title="인쇄" onClick={() => void savePoster()}><RiPrinterLine aria-hidden="true" /></button>
           </div>

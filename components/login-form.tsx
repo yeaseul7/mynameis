@@ -47,7 +47,7 @@ export function LoginForm({ variant = "card" }: { variant?: "card" | "inline" })
   return (
     <section className={`login-card${variant === "inline" ? " login-inline" : ""}`}>
       {variant === "card" && <>
-        <Link className="login-brand" href="/"><Image className="wordmark-logo" src="/mynameis-logo.png" alt="mynameis" width={122} height={42} priority /></Link>
+        <Link className="login-brand" href="/"><Image className="wordmark-logo" src="/mynameis-logo-240.png" alt="mynameis" width={122} height={42} priority /></Link>
         <h1>{mode === "login" ? "우리 아이 정보를 한눈에 봐요" : "우리 아이의 이름표를 만들어요"}</h1>
         <p>{mode === "login" ? "로그인하고 이름표와 돌봄 정보를 관리하세요." : "계정을 만들고 첫 이름표를 등록하세요."}</p>
         <div className="social-buttons">
