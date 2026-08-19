@@ -573,7 +573,7 @@ export function BasicShareProfile({
         <div className="basic-share-overlay">
           <div className="basic-share-header">
             <a className="basic-share-brand" href="/" aria-label="mynameis 홈">
-              <Image className="wordmark-logo" src="/mynameis-logo-240.png" alt="mynameis" width={72} height={25} />
+              <Image className="wordmark-logo" src="/mynameis-logo-240.png" alt="mynameis" width={58} height={20} />
             </a>
             <button className="share-print-button" type="button" aria-label="인쇄" title="인쇄" onClick={() => void savePoster()}><RiPrinterLine aria-hidden="true" /></button>
           </div>
@@ -583,12 +583,16 @@ export function BasicShareProfile({
               <h1>{dog.name}</h1>
               <b>{dog.breed}</b>
             </div>
-            {residenceLabel ? <p className="basic-residence-location"><RiMapPinLine aria-hidden="true" /><span>사는 지역</span><b>{residenceLabel}</b></p> : null}
-            {instagramUsername ? (
-              <a className="basic-instagram-link" href={instagramUrl} target="_blank" rel="noopener noreferrer">
-                <Image src="/social/instagram-icon.png" alt="" width={18} height={18} />
-                <span>@{instagramUsername}</span>
-              </a>
+            {residenceLabel || instagramUsername ? (
+              <div className="basic-share-social-row">
+                {residenceLabel ? <p className="basic-residence-location"><RiMapPinLine aria-hidden="true" /><b>{residenceLabel}</b></p> : null}
+                {instagramUsername ? (
+                  <a className="basic-instagram-link" href={instagramUrl} target="_blank" rel="noopener noreferrer">
+                    <Image src="/social/instagram-icon.png" alt="" width={18} height={18} />
+                    <span>@{instagramUsername}</span>
+                  </a>
+                ) : null}
+              </div>
             ) : null}
             <div className="basic-share-stats">
               {profileStats.map((item) => (
