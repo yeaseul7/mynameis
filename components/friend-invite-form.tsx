@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { invokeFunction } from "@/lib/supabase/functions";
 
-export function FriendInviteForm() {
+export function FriendInviteForm({ onSuccess }: { onSuccess?: () => void | Promise<void> } = {}) {
   const [inviteCode, setInviteCode] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -26,6 +26,10 @@ export function FriendInviteForm() {
     setLoading(false);
 
     setMessage(`${data.name ?? "친구"}를 추가했어요.`);
+    if (onSuccess) {
+      await onSuccess();
+      return;
+    }
     router.push("/");
     router.refresh();
   }
@@ -33,8 +37,8 @@ export function FriendInviteForm() {
   return (
     <form className="friend-invite-form" onSubmit={submit}>
       <label>
-        <span>초대코드</span>
         <input
+          aria-label="초대코드"
           value={inviteCode}
           onChange={(event) => setInviteCode(event.target.value.toUpperCase())}
           placeholder="MNS-ABC123"

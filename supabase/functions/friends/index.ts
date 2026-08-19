@@ -1,14 +1,14 @@
 import { adminClient, errorResponse, handleOptions, HttpError, json, requireUser } from "../_shared/http.ts";
 
 function normalize(value: unknown) { const raw = String(value ?? "").trim().toUpperCase(); return raw.startsWith("MNS-") ? raw : `MNS-${raw.replace(/^MNS/, "").replace(/[^A-Z0-9]/g, "")}`; }
-function mapDog(row: any) { return { id: row.id, name: row.name, breed: row.breed, photos: [...(row.dog_images ?? [])].filter((p) => p.image_url).sort((a, b) => a.sort_order - b.sort_order).map((p) => ({ id: p.id, storageKey: p.storage_key, url: p.image_url, sortOrder: p.sort_order, isPrimary: p.is_primary })) }; }
+function mapDog(row: any) { return { id: row.id, name: row.name, breed: row.breed, birthDate: row.birth_date, photos: [...(row.dog_images ?? [])].filter((p) => p.image_url).sort((a, b) => a.sort_order - b.sort_order).map((p) => ({ id: p.id, storageKey: p.storage_key, url: p.image_url, sortOrder: p.sort_order, isPrimary: p.is_primary })) }; }
 
 Deno.serve(async (request) => {
   const options = handleOptions(request); if (options) return options;
   try {
     const user = await requireUser(request); const body = await request.json().catch(() => ({})); const admin = adminClient();
     if (body.action === "list") {
-      const { data, error } = await admin.from("dog_friends").select("friend_dog:dogs!dog_friends_friend_dog_id_fkey(id,name,breed,dog_images(id,storage_key,image_url,sort_order,is_primary))").eq("owner_id", user.id).order("created_at", { ascending: false });
+      const { data, error } = await admin.from("dog_friends").select("friend_dog:dogs!dog_friends_friend_dog_id_fkey(id,name,breed,birth_date,dog_images(id,storage_key,image_url,sort_order,is_primary))").eq("owner_id", user.id).eq("friend_dog.dog_images.is_primary", true).order("created_at", { ascending: false });
       if (error) throw error;
       return json({ friends: (data ?? []).map((r: any) => Array.isArray(r.friend_dog) ? r.friend_dog[0] : r.friend_dog).filter(Boolean).map(mapDog) });
     }

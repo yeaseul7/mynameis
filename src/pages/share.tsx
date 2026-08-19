@@ -37,7 +37,7 @@ export function SharePage({ slug }: { slug: string }) {
   useEffect(() => { loadShare(slug).then(setData); }, [slug]);
   useEffect(() => { if (new URLSearchParams(location.search).get("view") === "qr") QRCode.toDataURL(location.origin + "/share/" + slug, { width: 360, margin: 2, errorCorrectionLevel: "H" }).then(setQr); }, [slug]);
   if (data === undefined) return <RouteSkeleton variant="share" label="이름표를 불러오고 있어요" />;
-  if (!data) return <div className="shared-page"><section className="shared-profile"><a className="share-brand" href="/"><img src="/mynameis-logo.png" alt="mynameis" width="96" /></a><h1>이름표를 찾을 수 없어요</h1><p>공유 링크가 만료되었거나 접근할 수 없는 프로필이에요.</p></section></div>;
+  if (!data) return <div className="shared-page"><section className="shared-profile"><a className="share-brand" href="/"><img src="/mynameis-logo.png" alt="mynameis" width="72" /></a><h1>이름표를 찾을 수 없어요</h1><p>공유 링크가 만료되었거나 접근할 수 없는 프로필이에요.</p></section></div>;
   if (new URLSearchParams(location.search).get("view") === "qr") return <div className="shared-page qr-page"><section className="qr-card"><span>{data.mode === "lost" ? "실종 이름표" : "관리 이름표"}</span><h1>{data.mode === "lost" ? "실종 QR" : "관리 QR"}</h1><p>휴대폰 카메라로 스캔하면 공유 페이지가 열립니다.</p>{qr && <img src={qr} alt="공유 QR 코드" width="360" height="360" />}<a className="qr-download-link" href={qr} download="mynameis-qr.png">사진으로 저장하기</a><a href={`/share/${slug}`}>공유 페이지 확인</a></section></div>;
   return <div className="shared-page basic-shared-page"><BasicShareProfile dog={data.dog} mode={data.mode} canEdit={data.canEdit} links={data.links} slug={slug} guestbookEntries={data.entries} canWriteGuestbook={data.canEdit} foundLocationReports={data.reports} kakaoMapKey={import.meta.env.VITE_KAKAO_JAVASCRIPT_KEY} /></div>;
 }
