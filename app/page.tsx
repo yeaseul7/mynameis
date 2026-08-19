@@ -25,7 +25,7 @@ export function GuestHome() {
         <div className="minimal-hero-product">
           <div className="minimal-product-glow" aria-hidden="true" />
           <div className="minimal-phone">
-            <Image src="/landing-earlys-profile.jpeg" alt="반려견 얼리의 디지털 이름표 화면" width={1206} height={2052} priority />
+            <Image src="/landing-earlys-profile-600.jpg" alt="반려견 얼리의 디지털 이름표 화면" width={600} height={1021} priority fetchPriority="high" />
           </div>
         </div>
       </section>
@@ -37,20 +37,20 @@ export function GuestHome() {
           <span>필요한 정보가 정확한 사람에게 바로 닿습니다.</span>
         </div>
         <div className="minimal-screen-stage">
-          <div className="minimal-screen lost-screen"><Image src="/landing-lost-share-preview.jpg" alt="반려견 실종 정보 공유 화면" width={1205} height={2048} /></div>
-          <div className="minimal-screen main-screen"><Image src="/landing-share-page-preview.jpeg" alt="반려견 돌봄 정보 공유 화면" width={1080} height={1920} /></div>
-          <div className="minimal-screen report-screen"><Image src="/landing-lost-info-preview-v2.png" alt="반려견 목격 위치 제보 화면" width={860} height={1404} /></div>
+          <div className="minimal-screen lost-screen"><Image src="/landing-lost-share-preview-600.jpg" alt="반려견 실종 정보 공유 화면" width={600} height={1021} /></div>
+          <div className="minimal-screen main-screen"><Image src="/landing-share-page-preview-600.jpg" alt="반려견 돌봄 정보 공유 화면" width={600} height={1137} /></div>
+          <div className="minimal-screen report-screen"><Image src="/landing-lost-info-preview-600.jpg" alt="반려견 목격 위치 제보 화면" width={600} height={980} /></div>
         </div>
       </section>
 
       <section className="minimal-uses">
         <article className="minimal-use-card care-use scroll-reveal reveal-left">
           <div><p>돌봄 정보</p><h2>말로 설명하던 모든 것을<br />한눈에.</h2><span>식사, 알레르기, 산책 습관과 병원 정보를 필요한 만큼만 공유하세요.</span></div>
-          <Image src="/landing-share-page-preview.jpeg" alt="돌봄 정보 페이지 예시" width={1080} height={1920} />
+          <Image src="/landing-share-page-preview-600.jpg" alt="돌봄 정보 페이지 예시" width={600} height={1137} />
         </article>
         <article className="minimal-use-card lost-use scroll-reveal reveal-right">
           <div><p>실종 정보</p><h2>발견한 사람이<br />바로 연락할 수 있게.</h2><span>사진과 특징, 보호자 연락처를 미리 준비하고 위치 제보를 한곳에서 확인하세요.</span></div>
-          <Image src="/landing-lost-share-preview.jpg" alt="실종 정보 페이지 예시" width={1205} height={2048} />
+          <Image src="/landing-lost-share-preview-600.jpg" alt="실종 정보 페이지 예시" width={600} height={1021} />
         </article>
       </section>
 
@@ -72,7 +72,7 @@ export function GuestHome() {
         <Link className="minimal-cta" href="/login">무료로 시작하기 <span aria-hidden="true">›</span></Link>
       </section>
 
-      <footer className="guest-footer"><div className="landing-inner"><Link href="/" aria-label="mynameis 홈"><Image src="/mynameis-logo.png" alt="mynameis" width={82} height={28} /></Link><nav aria-label="하단 링크"><a href="/terms">이용약관</a><a href="/privacy">개인정보처리방침</a><a href="mailto:sientobiz@gmail.com">문의하기</a></nav><p>© mynameis</p></div></footer>
+      <footer className="guest-footer"><div className="landing-inner"><Link href="/" aria-label="mynameis 홈"><Image src="/mynameis-logo-240.png" alt="mynameis" width={82} height={28} /></Link><nav aria-label="하단 링크"><a href="/terms">이용약관</a><a href="/privacy">개인정보처리방침</a><a href="mailto:sientobiz@gmail.com">문의하기</a></nav><p>© mynameis</p></div></footer>
     </main>
   );
 }
