@@ -1,0 +1,18 @@
+{
+  "name": "mynameis — 반려견 QR 이름표",
+  "short_name": "mynameis",
+  "description": "반려견의 돌봄 정보와 실종 정보를 하나의 QR 이름표로 공유하세요.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fffdf7",
+  "theme_color": "#ffd966",
+  "lang": "ko-KR",
+  "icons": [
+    {
+      "src": "/app-icon.png",
+      "sizes": "1024x1025",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

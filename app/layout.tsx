@@ -16,6 +16,11 @@ export const metadata: Metadata = {
   applicationName: siteName,
   keywords: ["mynameis", "반려견 QR 이름표", "강아지 QR 이름표", "반려동물 이름표", "강아지 실종 QR", "반려견 돌봄 정보", "반려동물 프로필 공유"],
   alternates: { canonical: "/" },
+  manifest: "/site.webmanifest",
+  icons: {
+    icon: [{ url: "/app-icon.png", type: "image/png" }],
+    apple: [{ url: "/app-icon.png", type: "image/png" }],
+  },
   openGraph: {
     type: "website",
     locale: "ko_KR",
@@ -23,7 +28,7 @@ export const metadata: Metadata = {
     title: siteTitle,
     description: siteDescription,
     url: "/",
-    images: [{ url: ogImage, width: 1536, height: 1024, alt: "mynameis 우리 아이의 모든 정보 한 곳에" }],
+    images: [{ url: ogImage, width: 1536, height: 1024, alt: "mynameis 우리 아이의 모든 정보, 한 곳에" }],
   },
   twitter: { card: "summary_large_image", title: siteTitle, description: siteDescription, images: [ogImage] },
   robots: { index: true, follow: true },
