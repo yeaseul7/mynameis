@@ -76,6 +76,15 @@ function getDateTimeLabel(value: string | null | undefined) {
   return new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium" }).format(date);
 }
 
+function getDistanceMeters(from: { latitude: number; longitude: number }, to: { latitude: number; longitude: number }) {
+  const radians = (degrees: number) => degrees * Math.PI / 180;
+  const latitudeDelta = radians(to.latitude - from.latitude);
+  const longitudeDelta = radians(to.longitude - from.longitude);
+  const a = Math.sin(latitudeDelta / 2) ** 2
+    + Math.cos(radians(from.latitude)) * Math.cos(radians(to.latitude)) * Math.sin(longitudeDelta / 2) ** 2;
+  return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 function escapeXml(value: string) {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
@@ -122,8 +131,11 @@ export function BasicShareProfile({
   const [locationReportOpen, setLocationReportOpen] = useState(false);
   const [locationThanksOpen, setLocationThanksOpen] = useState(false);
   const [locationReportNote, setLocationReportNote] = useState("");
+  const [visibleFoundLocationReports, setVisibleFoundLocationReports] = useState(foundLocationReports);
   const [selectedReportLocation, setSelectedReportLocation] = useState<{ latitude: number; longitude: number; accuracy: number | null } | null>(null);
+  const [locationPickerError, setLocationPickerError] = useState("");
   const locationPickerMapRef = useRef<HTMLDivElement>(null);
+  const reportLocationOriginRef = useRef<{ latitude: number; longitude: number } | null>(null);
   const [lostSnapshot, setLostSnapshot] = useState<LostLocationSnapshot>({
     lostAt: care?.lostAt ?? null,
     lostLocationAddress: care?.lostLocationAddress ?? null,
@@ -137,6 +149,7 @@ export function BasicShareProfile({
   const primaryContact = care?.emergencyContact1?.replace(/[^\d+]/g, "") ?? "";
   const instagramUsername = normalizeInstagramUsername(dog.instagramUsername);
   const instagramUrl = instagramUsername ? `https://www.instagram.com/${encodeURIComponent(instagramUsername)}/` : "";
+  const residenceLabel = dog.residenceDistrict ?? "";
   const profileStats = [
     { label: "나이", value: getAgeLabel(dog.birthDate) || "미입력" },
     { label: "성별", value: getGenderLabel(dog.gender) },
@@ -164,25 +177,48 @@ export function BasicShareProfile({
       const map = new window.kakao.maps.Map(locationPickerMapRef.current, { center, level: 4 });
       map.setMinLevel?.(2);
       map.setMaxLevel?.(6);
+      reportLocationOriginRef.current = { latitude, longitude };
+      setLocationPickerError("");
+      new window.kakao.maps.Circle({ center, radius: 1000, strokeWeight: 2, strokeColor: "#D9322E", strokeOpacity: .8, strokeStyle: "solid", fillColor: "#FF8A80", fillOpacity: .12, map });
       setSelectedReportLocation({ latitude, longitude, accuracy });
       setLocationShareStatus("idle");
       window.kakao.maps.event.addListener(map, "idle", () => {
         if (cancelled) return;
         const nextCenter = map.getCenter();
-        setSelectedReportLocation({ latitude: nextCenter.getLat(), longitude: nextCenter.getLng(), accuracy: null });
+        const next = { latitude: nextCenter.getLat(), longitude: nextCenter.getLng() };
+        const origin = reportLocationOriginRef.current;
+        if (origin) {
+          const distance = getDistanceMeters(origin, next);
+          if (distance > 1000) {
+            const ratio = 995 / distance;
+            const limited = {
+              latitude: origin.latitude + (next.latitude - origin.latitude) * ratio,
+              longitude: origin.longitude + (next.longitude - origin.longitude) * ratio,
+            };
+            setSelectedReportLocation({ ...limited, accuracy: null });
+            setLocationPickerError("현재 위치에서 1km 이내만 선택할 수 있어요.");
+            map.panTo(new window.kakao!.maps.LatLng(limited.latitude, limited.longitude));
+            return;
+          }
+        }
+        setLocationPickerError("");
+        setSelectedReportLocation({ ...next, accuracy: null });
       });
     }
 
     function locateAndRender() {
       setLocationShareStatus("locating");
-      const fallback = () => renderPicker(care?.lostLocationLat ?? 37.5665, care?.lostLocationLng ?? 126.978, null);
       if (!("geolocation" in navigator)) {
-        fallback();
+        setLocationShareStatus("failed");
+        setLocationPickerError("현재 위치를 확인할 수 없어 위치 제보를 진행할 수 없어요.");
         return;
       }
       navigator.geolocation.getCurrentPosition(
         (position) => renderPicker(position.coords.latitude, position.coords.longitude, position.coords.accuracy),
-        fallback,
+        () => {
+          setLocationShareStatus("failed");
+          setLocationPickerError("현재 위치 권한을 허용해야 위치를 제보할 수 있어요.");
+        },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
       );
     }
@@ -204,7 +240,7 @@ export function BasicShareProfile({
     }
 
     return () => { cancelled = true; };
-  }, [care?.lostLocationLat, care?.lostLocationLng, kakaoMapKey, locationReportOpen]);
+  }, [kakaoMapKey, locationReportOpen]);
 
   function switchInfoTab(event: MouseEvent<HTMLAnchorElement>, tab: "lost" | "care", token: string) {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -231,6 +267,7 @@ export function BasicShareProfile({
       lostLocationDetail: null,
     };
     setLostSnapshot(emptyLostSnapshot);
+    setVisibleFoundLocationReports([]);
   }
 
   async function deleteMyDog() {
@@ -250,8 +287,10 @@ export function BasicShareProfile({
   }
 
   async function shareSelectedLocation() {
-    if (!selectedReportLocation) {
+    const origin = reportLocationOriginRef.current;
+    if (!selectedReportLocation || !origin || getDistanceMeters(origin, selectedReportLocation) > 1000) {
       setLocationShareStatus("failed");
+      setLocationPickerError("현재 위치에서 1km 이내만 선택할 수 있어요.");
       return;
     }
     setLocationShareStatus("sharing");
@@ -544,6 +583,7 @@ export function BasicShareProfile({
               <h1>{dog.name}</h1>
               <b>{dog.breed}</b>
             </div>
+            {residenceLabel ? <p className="basic-residence-location"><RiMapPinLine aria-hidden="true" /><span>사는 지역</span><b>{residenceLabel}</b></p> : null}
             {instagramUsername ? (
               <a className="basic-instagram-link" href={instagramUrl} target="_blank" rel="noopener noreferrer">
                 <Image src="/social/instagram-icon.png" alt="" width={18} height={18} />
@@ -593,7 +633,7 @@ export function BasicShareProfile({
                   ) : null}
                 </div>
               ) : null}
-              {canEdit && foundLocationReports.length > 0 ? <FoundLocationReports reports={foundLocationReports} kakaoKey={kakaoMapKey} /> : null}
+              {canEdit && visibleFoundLocationReports.length > 0 ? <FoundLocationReports reports={visibleFoundLocationReports} kakaoKey={kakaoMapKey} /> : null}
               {canEdit ? (
                 <>
                   <dl><dt><InfoLabel icon={RiPhoneLine}>긴급 연락처1</InfoLabel></dt><dd>{care?.emergencyContact1 || "미입력"}</dd></dl>
@@ -652,7 +692,7 @@ export function BasicShareProfile({
       {activeTab === "lost" ? (
         <footer className="share-remote-footer" aria-label="빠른 연락">
           {primaryContact ? <a href={`tel:${primaryContact}`}>전화하기</a> : <span aria-disabled="true">전화하기</span>}
-          <button type="button" onClick={() => { setSelectedReportLocation(null); setLocationShareStatus("idle"); setLocationReportOpen(true); }} disabled={locationShareStatus === "sharing"}>
+          <button type="button" onClick={() => { reportLocationOriginRef.current = null; setSelectedReportLocation(null); setLocationPickerError(""); setLocationShareStatus("idle"); setLocationReportOpen(true); }} disabled={locationShareStatus === "sharing"}>
             {locationShareStatus === "sharing" ? "제보 중" : locationShareStatus === "shared" ? "제보 완료" : locationShareStatus === "failed" ? "다시 제보" : "목격 위치 제보"}
           </button>
           {instagramUrl ? <a className="instagram-footer-link" href={instagramUrl} target="_blank" rel="noopener noreferrer"><Image src="/social/instagram-icon.png" alt="" width={18} height={18} />인스타</a> : <span className="instagram-footer-link" aria-disabled="true"><Image src="/social/instagram-icon.png" alt="" width={18} height={18} />인스타</span>}
@@ -673,7 +713,8 @@ export function BasicShareProfile({
                 {locationShareStatus === "locating" ? <span className="location-picker-loading">현재 위치를 찾고 있어요…</span> : null}
               </div>
             ) : <p className="location-picker-error" role="alert">지도를 불러올 수 없어요.</p>}
-            <small className="location-picker-help">현재 위치에 핀이 먼저 표시됩니다. 지도를 드래그하면 핀 위치가 변경돼요.</small>
+            <small className="location-picker-help">현재 위치에 핀이 먼저 표시됩니다. 표시된 1km 반경 안에서만 선택할 수 있어요.</small>
+            {locationPickerError ? <p className="location-picker-warning" role="alert">{locationPickerError}</p> : null}
             <textarea
               className="location-report-note"
               value={locationReportNote}
