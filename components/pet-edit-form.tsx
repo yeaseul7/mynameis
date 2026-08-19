@@ -35,6 +35,11 @@ export function PetEditForm({ dog }: { dog: EditableDog }) {
   const [birthYear, setBirthYear] = useState(() => dog.birthDate?.slice(0, 4) ?? "");
   const [birthMonth, setBirthMonth] = useState(() => dog.birthDate?.slice(5, 7).replace(/^0/, "") ?? "");
   const [birthDay, setBirthDay] = useState(() => dog.birthDate?.slice(8, 10).replace(/^0/, "") ?? "");
+  const savedResidenceDistrict = dog.residenceDistrict ?? "";
+  const savedResidenceSido = KOREA_SIDO_OPTIONS.find((sido) => savedResidenceDistrict.startsWith(`${sido} `));
+  const savedResidenceSigungu = savedResidenceSido ? savedResidenceDistrict.replace(`${savedResidenceSido} `, "") : savedResidenceDistrict;
+  const [residenceSido, setResidenceSido] = useState<KoreaSido | "">(savedResidenceSido ?? "");
+  const [residenceSigungu, setResidenceSigungu] = useState(savedResidenceSigungu);
   const [lostYear, setLostYear] = useState(() => dog.careProfile?.lostAt?.slice(0, 4) ?? getTodayParts().year);
   const [lostMonth, setLostMonth] = useState(() => dog.careProfile?.lostAt?.slice(5, 7).replace(/^0/, "") ?? getTodayParts().month);
   const [lostDay, setLostDay] = useState(() => dog.careProfile?.lostAt?.slice(8, 10).replace(/^0/, "") ?? getTodayParts().day);
@@ -50,6 +55,7 @@ export function PetEditForm({ dog }: { dog: EditableDog }) {
   const daysInMonth = birthYear && birthMonth ? new Date(Number(birthYear), Number(birthMonth), 0).getDate() : 31;
   const lostDaysInMonth = lostYear && lostMonth ? new Date(Number(lostYear), Number(lostMonth), 0).getDate() : 31;
   const lostSigunguOptions = lostSido ? KOREA_REGION_OPTIONS[lostSido] : [];
+  const residenceSigunguOptions = residenceSido ? KOREA_REGION_OPTIONS[residenceSido] : [];
 
   useEffect(() => {
     const urls = files.map((file) => URL.createObjectURL(file));
@@ -87,6 +93,7 @@ export function PetEditForm({ dog }: { dog: EditableDog }) {
     return {
       name: String(form.get("name") ?? "").trim(),
       breed: String(form.get("breed") ?? "").trim(),
+      residenceDistrict: residenceSido && residenceSigungu ? `${residenceSido} ${residenceSigungu}` : null,
       birthDate,
       weightKg,
       gender: String(form.get("gender")) as DogProfile["gender"],
@@ -222,6 +229,11 @@ export function PetEditForm({ dog }: { dog: EditableDog }) {
       </div>
       <label><span className="label-text">이름 <span className="required-mark" aria-hidden>*</span><span className="sr-only">필수</span></span><input name="name" defaultValue={dog.name} required maxLength={20} /></label>
       <label><span className="label-text">견종 <span className="required-mark" aria-hidden>*</span><span className="sr-only">필수</span></span><input name="breed" defaultValue={dog.breed} required maxLength={30} /></label>
+      <div className="profile-location-fields">
+        <span className="field-label">사는 곳</span>
+        <label>시·도<select value={residenceSido} onChange={(event) => { setResidenceSido(event.target.value as KoreaSido | ""); setResidenceSigungu(""); }}><option value="">시·도 선택</option>{KOREA_SIDO_OPTIONS.map((sido) => <option key={sido} value={sido}>{sido}</option>)}</select></label>
+        <label>시·군·구<select value={residenceSigungu} onChange={(event) => setResidenceSigungu(event.target.value)} disabled={!residenceSido}><option value="">시·군·구 선택</option>{residenceSigunguOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+      </div>
       <div className="birth-date-field"><span className="field-label">생년월일 <span className="required-mark" aria-hidden>*</span><span className="sr-only">필수</span></span><div>
         <label><select aria-label="출생 연도" value={birthYear} onChange={(event) => setBirthYear(event.target.value)} required><option value="">년도</option>{Array.from({ length: 31 }, (_, index) => currentYear - index).map((year) => <option key={year} value={year}>{year}년</option>)}</select></label>
         <label><select aria-label="출생 월" value={birthMonth} onChange={(event) => setBirthMonth(event.target.value)} required><option value="">월</option>{Array.from({ length: 12 }, (_, index) => index + 1).map((month) => <option key={month} value={month}>{month}월</option>)}</select></label>

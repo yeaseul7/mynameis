@@ -6,6 +6,7 @@ type DogRow = {
   owner_id: string;
   name: string;
   breed: string;
+  residence_district: string | null;
   birth_date: string | null;
   weight_kg: number | string | null;
   gender: DogProfile["gender"];
@@ -54,8 +55,8 @@ type DogPublicLinkRow = {
   token: string;
 };
 
-const DOG_SELECT = "id,owner_id,name,breed,birth_date,weight_kg,gender,neutering_status,animal_registration_no,instagram_username,invite_code,dog_care_profiles(takes_medication,primary_hospital,primary_hospital_address,primary_hospital_phone,emergency_note,emergency_contact_1,emergency_contact_2,lost_location_address,lost_location_district,lost_location_neighborhood,lost_location_detail,lost_location_lat,lost_location_lng,lost_at,meals_per_day,walks_per_week,toileting_type,marks_indoors,fifth_vaccine_done,daycare_experience,has_allergy,handoff_memo),dog_images(id,storage_key,image_url,sort_order,is_primary)";
-const DOG_SELECT_BASE = "id,owner_id,name,breed,birth_date,weight_kg,gender,neutering_status,animal_registration_no,instagram_username,invite_code,dog_images(id,storage_key,image_url,sort_order,is_primary)";
+const DOG_SELECT = "id,owner_id,name,breed,residence_district,birth_date,weight_kg,gender,neutering_status,animal_registration_no,instagram_username,invite_code,dog_care_profiles(takes_medication,primary_hospital,primary_hospital_address,primary_hospital_phone,emergency_note,emergency_contact_1,emergency_contact_2,lost_location_address,lost_location_district,lost_location_neighborhood,lost_location_detail,lost_location_lat,lost_location_lng,lost_at,meals_per_day,walks_per_week,toileting_type,marks_indoors,fifth_vaccine_done,daycare_experience,has_allergy,handoff_memo),dog_images(id,storage_key,image_url,sort_order,is_primary)";
+const DOG_SELECT_BASE = "id,owner_id,name,breed,residence_district,birth_date,weight_kg,gender,neutering_status,animal_registration_no,instagram_username,invite_code,dog_images(id,storage_key,image_url,sort_order,is_primary)";
 const DOG_CARE_SELECT = "takes_medication,primary_hospital,primary_hospital_address,primary_hospital_phone,emergency_note,emergency_contact_1,emergency_contact_2,lost_location_address,lost_location_district,lost_location_neighborhood,lost_location_detail,lost_location_lat,lost_location_lng,lost_at,meals_per_day,walks_per_week,toileting_type,marks_indoors,fifth_vaccine_done,daycare_experience,has_allergy,handoff_memo";
 
 function mapDog(row: DogRow): DogProfile {
@@ -65,6 +66,7 @@ function mapDog(row: DogRow): DogProfile {
     ownerId: row.owner_id,
     name: row.name,
     breed: row.breed,
+    residenceDistrict: row.residence_district,
     birthDate: row.birth_date,
     weightKg: row.weight_kg == null ? null : Number(row.weight_kg),
     gender: row.gender,
@@ -294,6 +296,7 @@ export async function insertDog(supabase: SupabaseClient, ownerId: string, input
     owner_id: ownerId,
     name: input.name,
     breed: input.breed,
+    residence_district: input.residenceDistrict,
     birth_date: input.birthDate,
     weight_kg: input.weightKg,
     gender: input.gender,
@@ -310,6 +313,7 @@ export async function updateDog(supabase: SupabaseClient, dogId: string, input: 
   const { error } = await supabase.from("dogs").update({
     name: input.name,
     breed: input.breed,
+    residence_district: input.residenceDistrict,
     birth_date: input.birthDate,
     weight_kg: input.weightKg,
     gender: input.gender,

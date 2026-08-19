@@ -16,10 +16,11 @@ declare global {
     kakao?: {
       maps: {
         load: (callback: () => void) => void;
-        Map: new (container: HTMLElement, options: { center: unknown; level: number }) => { setMinLevel?: (level: number) => void; setMaxLevel?: (level: number) => void; getCenter: () => { getLat: () => number; getLng: () => number } };
+        Map: new (container: HTMLElement, options: { center: unknown; level: number }) => { setMinLevel?: (level: number) => void; setMaxLevel?: (level: number) => void; getCenter: () => { getLat: () => number; getLng: () => number }; panTo: (position: unknown) => void };
         LatLng: new (latitude: number, longitude: number) => { getLat: () => number; getLng: () => number };
         Marker: new (options: { position: unknown; map?: unknown }) => { setMap: (map: unknown) => void };
         CustomOverlay: new (options: { position: unknown; map?: unknown; content: HTMLElement; yAnchor?: number; zIndex?: number }) => { setMap: (map: unknown) => void };
+        Circle: new (options: { center: unknown; radius: number; strokeWeight?: number; strokeColor?: string; strokeOpacity?: number; strokeStyle?: string; fillColor?: string; fillOpacity?: number; map?: unknown }) => { setMap: (map: unknown) => void };
         LatLngBounds: new () => { extend: (position: unknown) => void };
         event: { addListener: (target: unknown, eventName: string, callback: () => void) => void };
       };

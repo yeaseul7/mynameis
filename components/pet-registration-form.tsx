@@ -7,7 +7,10 @@ import { HospitalSearchField } from "@/components/hospital-search-field";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { createDogBasicProfile, saveDogCareProfile } from "@/lib/pets/service";
 import { ACCEPTED_DOG_IMAGE_TYPES, MAX_DOG_PHOTOS, normalizeInstagramUsername, normalizeRegistrationNumber, validateBirthDate, validateDogImageFile, validateDogPhotoCount, validateInstagramUsername, validateRegistrationNumber, validateWeightKg } from "@/lib/pets/validation";
+import { KOREA_REGION_OPTIONS, KOREA_SIDO_OPTIONS } from "@/lib/regions/korea-administrative-districts";
 import type { DogProfile } from "@/lib/dogs";
+
+type KoreaSido = keyof typeof KOREA_REGION_OPTIONS;
 
 export function PetRegistrationForm({ userId }: { userId: string }) {
   const [files, setFiles] = useState<File[]>([]);
@@ -18,6 +21,8 @@ export function PetRegistrationForm({ userId }: { userId: string }) {
   const [birthYear, setBirthYear] = useState("");
   const [birthMonth, setBirthMonth] = useState("");
   const [birthDay, setBirthDay] = useState("");
+  const [residenceSido, setResidenceSido] = useState<KoreaSido | "">("");
+  const [residenceSigungu, setResidenceSigungu] = useState("");
   const [step, setStep] = useState(1);
   const formRef = useRef<HTMLFormElement>(null);
   const creatingDogPromiseRef = useRef<Promise<string> | null>(null);
@@ -25,6 +30,7 @@ export function PetRegistrationForm({ userId }: { userId: string }) {
   const currentYear = new Date().getFullYear();
   const stepTitle = ["기본정보", "긴급정보", "돌봄정보"][step - 1];
   const daysInMonth = birthYear && birthMonth ? new Date(Number(birthYear), Number(birthMonth), 0).getDate() : 31;
+  const residenceSigunguOptions = residenceSido ? KOREA_REGION_OPTIONS[residenceSido] : [];
 
   useEffect(() => {
     const urls = files.map((file) => URL.createObjectURL(file));
@@ -58,6 +64,7 @@ export function PetRegistrationForm({ userId }: { userId: string }) {
     return {
       name: String(form.get("name") ?? "").trim(),
       breed: String(form.get("breed") ?? "").trim(),
+      residenceDistrict: residenceSido && residenceSigungu ? `${residenceSido} ${residenceSigungu}` : null,
       birthDate,
       weightKg: weightValue ? Number(weightValue) : null,
       gender: String(form.get("gender")) as DogProfile["gender"],
@@ -206,6 +213,11 @@ export function PetRegistrationForm({ userId }: { userId: string }) {
       </div>
       <label><span className="label-text">이름 <span className="required-mark" aria-hidden>*</span><span className="sr-only">필수</span></span><input name="name" placeholder="예: 얼리" required maxLength={20} /></label>
       <label><span className="label-text">견종 <span className="required-mark" aria-hidden>*</span><span className="sr-only">필수</span></span><input name="breed" placeholder="예: 포메라니안" required maxLength={30} /></label>
+      <div className="profile-location-fields">
+        <span className="field-label">사는 곳</span>
+        <label>시·도<select value={residenceSido} onChange={(event) => { setResidenceSido(event.target.value as KoreaSido | ""); setResidenceSigungu(""); }}><option value="">시·도 선택</option>{KOREA_SIDO_OPTIONS.map((sido) => <option key={sido} value={sido}>{sido}</option>)}</select></label>
+        <label>시·군·구<select value={residenceSigungu} onChange={(event) => setResidenceSigungu(event.target.value)} disabled={!residenceSido}><option value="">시·군·구 선택</option>{residenceSigunguOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+      </div>
       <div className="birth-date-field"><span className="field-label">생년월일 <span className="required-mark" aria-hidden>*</span><span className="sr-only">필수</span></span><div>
         <label><select aria-label="출생 연도" value={birthYear} onChange={(event) => setBirthYear(event.target.value)} required><option value="">년도</option>{Array.from({ length: 31 }, (_, index) => currentYear - index).map((year) => <option key={year} value={year}>{year}년</option>)}</select></label>
         <label><select aria-label="출생 월" value={birthMonth} onChange={(event) => setBirthMonth(event.target.value)} required><option value="">월</option>{Array.from({ length: 12 }, (_, index) => index + 1).map((month) => <option key={month} value={month}>{month}월</option>)}</select></label>

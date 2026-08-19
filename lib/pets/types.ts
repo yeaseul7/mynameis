@@ -16,6 +16,7 @@ export type DogProfile = {
   ownerId?: string;
   name: string;
   breed: string;
+  residenceDistrict: string | null;
   birthDate: string | null;
   weightKg: number | null;
   gender: DogGender;
@@ -55,6 +56,7 @@ export type DogCareProfile = {
 export type DogProfileInput = {
   name: string;
   breed: string;
+  residenceDistrict: string | null;
   birthDate: string;
   weightKg: number | null;
   gender: DogGender;

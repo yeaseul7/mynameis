@@ -58,6 +58,14 @@ Deno.serve(async (request) => {
         .maybeSingle();
       if (error) throw error;
       if (!updated) throw new HttpError(409, "돌봄 정보를 먼저 등록해 주세요.");
+      if (body.endReport === true) {
+        const { error: reportDeleteError } = await admin
+          .from("dog_found_location_reports")
+          .delete()
+          .eq("dog_id", dogId)
+          .eq("owner_id", user.id);
+        if (reportDeleteError) throw reportDeleteError;
+      }
       return json(values);
     }
     throw new HttpError(400, "지원하지 않는 작업이에요.");
