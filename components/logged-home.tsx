@@ -5,7 +5,7 @@ import Link from "next/link";
 import { KeyboardEvent, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { RiUserAddLine } from "react-icons/ri";
+import { RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
 import { FaPaw } from "react-icons/fa6";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { invokeFunction } from "@/lib/supabase/functions";
@@ -19,9 +19,14 @@ async function getPublicLinkToken(dogId: string, type: DogPublicLinkType) {
   return data.token;
 }
 
-async function getFriendDogs() {
-  const data = await invokeFunction<{ friends: DogProfile[] }>("friends", { action: "list" });
-  return data.friends;
+type FriendPage = { friends: DogProfile[]; nextCursor: number | null };
+
+async function getFriendDogs(cursor = 0) {
+  const data = await invokeFunction<{ friends: DogProfile[]; nextCursor?: number | null }>("friends", { action: "list", cursor });
+  return {
+    friends: data.friends ?? [],
+    nextCursor: typeof data.nextCursor === "number" ? data.nextCursor : null,
+  } satisfies FriendPage;
 }
 
 async function getFriendProfileToken(dogId: string) {
@@ -195,24 +200,25 @@ function PetCard({
   );
 }
 
-function FriendSection({ empty = false, friends = [], onNotify, onAddFriend }: { empty?: boolean; friends?: DogProfile[]; onNotify?: (message: string) => void; onAddFriend: () => void }) {
+function FriendSection({ empty = false, friends = [], onNotify, onAddFriend, onLoadMore, hasMore = false, loading = false }: { empty?: boolean; friends?: DogProfile[]; onNotify?: (message: string) => void; onAddFriend: () => void; onLoadMore?: () => void; hasMore?: boolean; loading?: boolean }) {
   const router = useRouter();
   const [openingFriendId, setOpeningFriendId] = useState("");
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const target = loadMoreRef.current;
+    if (!target || !hasMore || loading || !onLoadMore) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) onLoadMore();
+    }, { rootMargin: "240px 0px" });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [hasMore, loading, onLoadMore]);
 
   function friendCardColor(id: string) {
     const colors = ["lime", "purple", "orange"] as const;
     const hash = [...id].reduce((total, character) => total + character.charCodeAt(0), 0);
     return colors[hash % colors.length];
-  }
-
-  function friendAge(birthDate: string | null) {
-    if (!birthDate) return "나이 정보 없음";
-    const [year, month, day] = birthDate.split("-").map(Number);
-    if (!year || !month || !day) return "나이 정보 없음";
-    const today = new Date();
-    let age = today.getFullYear() - year;
-    if (today.getMonth() + 1 < month || (today.getMonth() + 1 === month && today.getDate() < day)) age -= 1;
-    return age >= 0 ? `${age}살` : "나이 정보 없음";
   }
 
   async function openFriend(friend: DogProfile) {
@@ -229,7 +235,7 @@ function FriendSection({ empty = false, friends = [], onNotify, onAddFriend }: {
 
   return (
     <section className="home-section friend-section" id="friends">
-      <div className="section-heading"><h2>친구들</h2><button className="add-friend-cta" type="button" onClick={onAddFriend}><RiUserAddLine aria-hidden="true" /><span>친구 등록</span></button></div>
+      <div className="section-heading"><h2>친구들</h2><button className="add-friend-cta" type="button" onClick={onAddFriend}><span>친구 등록</span></button></div>
       {empty || friends.length === 0 ? (
         <div className="friend-empty"><strong>아직 등록한 친구가 없어요!</strong><button type="button" onClick={onAddFriend}>＋ 친구 등록하기</button></div>
       ) : (
@@ -250,12 +256,12 @@ function FriendSection({ empty = false, friends = [], onNotify, onAddFriend }: {
               </div>
               <div className="friend-card-copy">
                 <h3><span aria-hidden><FaPaw /></span>{friend.name}</h3>
-                <p>{openingFriendId === friend.id ? "이동 중" : friendAge(friend.birthDate)}</p>
               </div>
             </article>
           ))}
         </div>
       )}
+      {hasMore && <div className="friend-load-more" ref={loadMoreRef} aria-live="polite">{loading ? "친구를 불러오고 있어요..." : "스크롤하면 친구를 더 불러와요"}</div>}
     </section>
   );
 }
@@ -288,8 +294,12 @@ function HomeSkeleton() {
 }
 
 export function LoggedHome({ userId, userName }: { userId: string; userName: string }) {
+  const petScrollRef = useRef<HTMLDivElement>(null);
   const [pets, setPets] = useState<DogProfile[] | null>(null);
   const [friends, setFriends] = useState<DogProfile[]>([]);
+  const [friendCursor, setFriendCursor] = useState<number | null>(null);
+  const [friendsLoading, setFriendsLoading] = useState(false);
+  const friendLoadInFlightRef = useRef(false);
   const [loadError, setLoadError] = useState("");
   const [alertMessage, setAlertMessage] = useState("");
   const [friendModalOpen, setFriendModalOpen] = useState(false);
@@ -299,14 +309,41 @@ export function LoggedHome({ userId, userName }: { userId: string; userName: str
     window.setTimeout(() => setAlertMessage(""), 1800);
   }
 
+  function movePetCards(direction: -1 | 1) {
+    const container = petScrollRef.current;
+    if (!container) return;
+    const card = container.querySelector<HTMLElement>(".home-pet-card");
+    const gap = Number.parseFloat(getComputedStyle(container).gap) || 16;
+    container.scrollBy({ left: direction * ((card?.offsetWidth ?? container.clientWidth * .8) + gap), behavior: "smooth" });
+  }
+
   async function refreshFriends() {
-    const friendData = await getFriendDogs().catch((error) => {
+    const friendPage = await getFriendDogs().catch((error) => {
       console.error(error);
-      return [];
+      return { friends: [], nextCursor: null };
     });
-    setFriends(friendData);
+    setFriends(friendPage.friends);
+    setFriendCursor(friendPage.nextCursor);
     setFriendModalOpen(false);
     showCopyAlert("친구를 추가했어요.");
+  }
+
+  async function loadMoreFriends() {
+    if (typeof friendCursor !== "number" || friendLoadInFlightRef.current) return;
+    friendLoadInFlightRef.current = true;
+    setFriendsLoading(true);
+    try {
+      const page = await getFriendDogs(friendCursor);
+      setFriends((current) => [...current, ...page.friends.filter((friend) => !current.some((item) => item.id === friend.id))]);
+      setFriendCursor(page.nextCursor);
+    } catch (error) {
+      console.error(error);
+      setFriendCursor(null);
+      showCopyAlert("친구를 더 불러오지 못했어요.");
+    } finally {
+      friendLoadInFlightRef.current = false;
+      setFriendsLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -330,12 +367,13 @@ export function LoggedHome({ userId, userName }: { userId: string; userName: str
         }),
         getFriendDogs().catch((error) => {
           console.error(error);
-          return [];
+          return { friends: [], nextCursor: null };
         }),
       ]);
       if (!active) return;
       setPets(petData);
-      setFriends(friendData);
+      setFriends(friendData.friends);
+      setFriendCursor(friendData.nextCursor);
     }
     loadHome();
     return () => { active = false; };
@@ -362,9 +400,9 @@ export function LoggedHome({ userId, userName }: { userId: string; userName: str
       {pets.length === 0 ? <EmptyPets onAddFriend={() => setFriendModalOpen(true)} /> : <>
         <section className="home-section my-pets-section" id="my-pets">
           <div className="section-heading"><h2>내 새꾸 <span aria-hidden>🐾</span></h2><Link className="add-pet-cta" href="/pets/new">＋ 새꾸 추가</Link></div>
-          <div className="pet-card-scroll">{pets.map((pet, index) => <PetCard key={pet.id} pet={pet} index={index} onNotify={showCopyAlert} />)}</div>
+          <div className="pet-card-carousel"><div className="pet-card-scroll" ref={petScrollRef}>{pets.map((pet, index) => <PetCard key={pet.id} pet={pet} index={index} onNotify={showCopyAlert} />)}</div>{pets.length >= 3 ? <div className="pet-card-carousel-controls" aria-label="내새꾸 카드 이동"><button type="button" onClick={() => movePetCards(-1)} aria-label="이전 내새꾸"><RiArrowLeftSLine aria-hidden="true" /></button><button type="button" onClick={() => movePetCards(1)} aria-label="다음 내새꾸"><RiArrowRightSLine aria-hidden="true" /></button></div> : null}</div>
         </section>
-        <FriendSection friends={friends} onNotify={showCopyAlert} onAddFriend={() => setFriendModalOpen(true)} />
+        <FriendSection friends={friends} onNotify={showCopyAlert} onAddFriend={() => setFriendModalOpen(true)} onLoadMore={loadMoreFriends} hasMore={typeof friendCursor === "number"} loading={friendsLoading} />
       </>}
     </div>
   );

@@ -9,6 +9,8 @@ function getInitial(value: string) {
 export function UserMenu({ email }: { email: string }) {
   return (
     <div className="user-menu">
+      <Link className="header-page-link" href="/">내새꾸</Link>
+      <Link className="header-page-link" href="/ongijonggi">옹기종기</Link>
       <Link className="account-initial-link" href="/account" title={email} aria-label="계정관리로 이동">
         {getInitial(email)}
       </Link>

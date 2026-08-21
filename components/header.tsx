@@ -19,7 +19,7 @@ export function Header() {
   return (
     <header className="site-header">
       <Link className="brand" href="/" aria-label="mynameis 홈"><Image className="wordmark-logo" src="/mynameis-logo-240.png" alt="mynameis" width={105} height={36} priority /></Link>
-      <nav aria-label="사용자 메뉴">
+      <nav className={user ? "desktop-user-nav" : "guest-user-nav"} aria-label="사용자 메뉴">
         {user ? <UserMenu email={user.email ?? "사용자"} /> : <Link className="header-login" href="/login">로그인</Link>}
       </nav>
     </header>
