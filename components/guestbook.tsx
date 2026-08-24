@@ -147,7 +147,7 @@ export function Guestbook({ slug, dogId, dogName, initialEntries, canWrite }: { 
       {canWrite ? (
         <form className="guestbook-form" onSubmit={submit}>
           <div className="guestbook-input-shell">
-            <textarea value={message} onChange={(event) => setMessage(event.target.value)} maxLength={180} rows={1} placeholder={`${dogName}에게 따뜻한 한마디를 남겨주세요.`} aria-label="방명록 메시지" required />
+            <textarea value={message} onChange={(event) => setMessage(event.target.value)} maxLength={180} rows={1} placeholder="따뜻한 한마디를 남겨주세요." aria-label="방명록 메시지" required />
           </div>
           <button type="submit" disabled={saving}>{saving ? "..." : "남기기"}</button>
         </form>

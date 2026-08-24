@@ -1,12 +1,11 @@
 "use client";
 
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { FaCamera } from "react-icons/fa";
 import { HospitalSearchField } from "@/components/hospital-search-field";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { createDogBasicProfile, saveDogCareProfile } from "@/lib/pets/service";
-import { ACCEPTED_DOG_IMAGE_TYPES, MAX_DOG_PHOTOS, normalizeInstagramUsername, normalizeRegistrationNumber, validateBirthDate, validateDogImageFile, validateDogPhotoCount, validateInstagramUsername, validateRegistrationNumber, validateWeightKg } from "@/lib/pets/validation";
+import { ACCEPTED_DOG_IMAGE_TYPES, isDuplicateRegistrationNumberError, MAX_DOG_PHOTOS, normalizeInstagramUsername, normalizeRegistrationNumber, validateBirthDate, validateDogImageFile, validateDogPhotoCount, validateInstagramUsername, validateRegistrationNumber, validateWeightKg } from "@/lib/pets/validation";
 import { KOREA_REGION_OPTIONS, KOREA_SIDO_OPTIONS } from "@/lib/regions/korea-administrative-districts";
 import type { DogProfile } from "@/lib/dogs";
 
@@ -26,7 +25,6 @@ export function PetRegistrationForm({ userId }: { userId: string }) {
   const [step, setStep] = useState(1);
   const formRef = useRef<HTMLFormElement>(null);
   const creatingDogPromiseRef = useRef<Promise<string> | null>(null);
-  const router = useRouter();
   const currentYear = new Date().getFullYear();
   const stepTitle = ["기본정보", "긴급정보", "돌봄정보"][step - 1];
   const daysInMonth = birthYear && birthMonth ? new Date(Number(birthYear), Number(birthMonth), 0).getDate() : 31;
@@ -158,8 +156,9 @@ export function PetRegistrationForm({ userId }: { userId: string }) {
         }
         await saveDogCareProfile(createBrowserSupabaseClient(), { ownerId: userId, dogId: currentDogId, careProfile });
       }
-    } catch {
+    } catch (error) {
       setUploading(false);
+      if (isDuplicateRegistrationNumberError(error)) return setError("동물등록번호는 중복될 수 없습니다.");
       return setError("현재 단계 정보를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.");
     }
     setUploading(false);
@@ -185,10 +184,9 @@ export function PetRegistrationForm({ userId }: { userId: string }) {
     try {
       const currentDogId = await ensureDogProfileCreated(profile);
       await saveDogCareProfile(createBrowserSupabaseClient(), { ownerId: userId, dogId: currentDogId, careProfile });
-      router.push("/");
-      router.refresh();
-    } catch {
-      setError("사진 업로드에 실패했어요. 잠시 후 다시 시도해 주세요.");
+      location.replace("/");
+    } catch (error) {
+      setError(isDuplicateRegistrationNumberError(error) ? "동물등록번호는 중복될 수 없습니다." : "사진 업로드에 실패했어요. 잠시 후 다시 시도해 주세요.");
       setUploading(false);
     }
   }
@@ -211,12 +209,12 @@ export function PetRegistrationForm({ userId }: { userId: string }) {
         ))}
         {files.length < MAX_DOG_PHOTOS && <label className="photo-empty-slot" htmlFor="pet-photo-upload" aria-label="사진 추가" tabIndex={0}><FaCamera aria-hidden /></label>}
       </div>
-      <label><span className="label-text">이름 <span className="required-mark" aria-hidden>*</span><span className="sr-only">필수</span></span><input name="name" placeholder="예: 얼리" required maxLength={20} /></label>
+      <label><span className="label-text">이름 <span className="required-mark" aria-hidden>*</span><span className="sr-only">필수</span></span><input name="name" placeholder="예: 얼리" required maxLength={10} /></label>
       <label><span className="label-text">견종 <span className="required-mark" aria-hidden>*</span><span className="sr-only">필수</span></span><input name="breed" placeholder="예: 포메라니안" required maxLength={30} /></label>
       <div className="profile-location-fields">
         <span className="field-label">사는 곳</span>
-        <label>시·도<select value={residenceSido} onChange={(event) => { setResidenceSido(event.target.value as KoreaSido | ""); setResidenceSigungu(""); }}><option value="">시·도 선택</option>{KOREA_SIDO_OPTIONS.map((sido) => <option key={sido} value={sido}>{sido}</option>)}</select></label>
-        <label>시·군·구<select value={residenceSigungu} onChange={(event) => setResidenceSigungu(event.target.value)} disabled={!residenceSido}><option value="">시·군·구 선택</option>{residenceSigunguOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+        <label><span className="sr-only">시·도</span><select value={residenceSido} onChange={(event) => { setResidenceSido(event.target.value as KoreaSido | ""); setResidenceSigungu(""); }}><option value="">시·도 선택</option>{KOREA_SIDO_OPTIONS.map((sido) => <option key={sido} value={sido}>{sido}</option>)}</select></label>
+        <label><span className="sr-only">시·군·구</span><select value={residenceSigungu} onChange={(event) => setResidenceSigungu(event.target.value)} disabled={!residenceSido}><option value="">시·군·구 선택</option>{residenceSigunguOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
       </div>
       <div className="birth-date-field"><span className="field-label">생년월일 <span className="required-mark" aria-hidden>*</span><span className="sr-only">필수</span></span><div>
         <label><select aria-label="출생 연도" value={birthYear} onChange={(event) => setBirthYear(event.target.value)} required><option value="">년도</option>{Array.from({ length: 31 }, (_, index) => currentYear - index).map((year) => <option key={year} value={year}>{year}년</option>)}</select></label>

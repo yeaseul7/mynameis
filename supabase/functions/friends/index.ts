@@ -8,9 +8,57 @@ Deno.serve(async (request) => {
   try {
     const user = await requireUser(request); const body = await request.json().catch(() => ({})); const admin = adminClient();
     if (body.action === "list") {
-      const { data, error } = await admin.from("dog_friends").select("friend_dog:dogs!dog_friends_friend_dog_id_fkey(id,name,breed,birth_date,dog_images(id,storage_key,image_url,sort_order,is_primary))").eq("owner_id", user.id).eq("friend_dog.dog_images.is_primary", true).order("created_at", { ascending: false });
+      const limit = 10;
+      const cursor = Math.max(0, Number.parseInt(String(body.cursor ?? "0"), 10) || 0);
+      const { data, error } = await admin.from("dog_friends").select("friend_dog:dogs!dog_friends_friend_dog_id_fkey(id,name,breed,birth_date,dog_images(id,storage_key,image_url,sort_order,is_primary))").eq("owner_id", user.id).eq("friend_dog.dog_images.is_primary", true).order("created_at", { ascending: false }).range(cursor, cursor + limit);
       if (error) throw error;
-      return json({ friends: (data ?? []).map((r: any) => Array.isArray(r.friend_dog) ? r.friend_dog[0] : r.friend_dog).filter(Boolean).map(mapDog) });
+      const rows = data ?? [];
+      const hasMore = rows.length > limit;
+      return json({ friends: rows.slice(0, limit).map((r: any) => Array.isArray(r.friend_dog) ? r.friend_dog[0] : r.friend_dog).filter(Boolean).map(mapDog), nextCursor: hasMore ? cursor + limit : null });
+    }
+    if (body.action === "nearby-lost") {
+      const limit = Math.min(24, Math.max(1, Number.parseInt(String(body.limit ?? "6"), 10) || 6));
+      const cursor = Math.max(0, Number.parseInt(String(body.cursor ?? "0"), 10) || 0);
+      const latitude = Number(body.latitude);
+      const longitude = Number(body.longitude);
+      const useCurrentLocation = Number.isFinite(latitude) && Number.isFinite(longitude);
+      let district: string | null = null;
+
+      if (useCurrentLocation) {
+        const key = Deno.env.get("KAKAO_REST_API_KEY");
+        if (!key) throw new HttpError(500, "Kakao REST API key is not configured.");
+        const url = new URL("https://dapi.kakao.com/v2/local/geo/coord2regioncode.json");
+        url.searchParams.set("x", String(longitude));
+        url.searchParams.set("y", String(latitude));
+        const response = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } });
+        if (!response.ok) throw new HttpError(response.status, "현재 지역을 확인하지 못했어요.");
+        const result = await response.json();
+        const region = (result.documents ?? []).find((item: Record<string, string>) => item.region_type === "H") ?? result.documents?.[0];
+        if (!region?.region_1depth_name || !region?.region_2depth_name) throw new HttpError(404, "현재 위치의 시군구를 확인하지 못했어요.");
+        district = `${region.region_1depth_name} ${region.region_2depth_name}`;
+      }
+
+      let query = admin
+        .from("dog_care_profiles")
+        .select("lost_at,lost_location_district,dog:dogs!inner(id,name,breed,owner_id,dog_images(id,image_url,sort_order,is_primary),dog_public_links!inner(token,type,is_active,revoked_at))")
+        .neq("dog.owner_id", user.id)
+        .not("lost_at", "is", null)
+        .eq("dog.dog_public_links.type", "LOST")
+        .eq("dog.dog_public_links.is_active", true)
+        .is("dog.dog_public_links.revoked_at", null)
+        .order("lost_at", { ascending: false })
+        .range(cursor, cursor + limit);
+      if (district) query = query.eq("lost_location_district", district);
+      const { data, error } = await query;
+      if (error) throw error;
+      const rows = data ?? [];
+      const hasMore = rows.length > limit;
+      return json({ district, nextCursor: hasMore ? cursor + limit : null, dogs: rows.slice(0, limit).map((care: any) => {
+        const dog = Array.isArray(care.dog) ? care.dog[0] : care.dog;
+        const link = Array.isArray(dog.dog_public_links) ? dog.dog_public_links[0] : dog.dog_public_links;
+        const photo = [...(dog.dog_images ?? [])].filter((item: any) => item.image_url).sort((a: any, b: any) => Number(b.is_primary) - Number(a.is_primary) || a.sort_order - b.sort_order)[0];
+        return { id: dog.id, name: dog.name, breed: dog.breed, lostLocation: care.lost_location_district ?? "", lostAt: care.lost_at, photoUrl: photo?.image_url ?? null, token: link?.token ?? "" };
+      }).filter((dog: any) => dog.token) });
     }
     if (body.action === "profile-link") {
       const dogId = String(body.dogId ?? "");

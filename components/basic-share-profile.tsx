@@ -649,9 +649,7 @@ export function BasicShareProfile({
               {care?.primaryHospitalAddress ? <dl><dt><InfoLabel icon={RiMapPinLine}>병원 주소</InfoLabel></dt><dd>{care.primaryHospitalAddress}</dd></dl> : null}
               {care?.primaryHospitalPhone ? <dl><dt><InfoLabel icon={RiPhoneLine}>병원 전화</InfoLabel></dt><dd>{care.primaryHospitalPhone}</dd></dl> : null}
               <dl><dt><InfoLabel icon={RiFileTextLine}>특이사항</InfoLabel></dt><dd>{care?.emergencyNote || "미입력"}</dd></dl>
-              <p className="lost-contact-notice">
-                연락처는 화면에 바로 보이지 않아요.
-              </p>
+              {canEdit ? <p className="lost-contact-notice">연락처는 화면에 바로 보이지 않아요.</p> : null}
             </>
           ) : (
             <>

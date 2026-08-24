@@ -10,3 +10,5 @@ verify_jwt = false
 verify_jwt = false
 [functions.kakao-hospitals]
 verify_jwt = false
+[functions.community]
+verify_jwt = false

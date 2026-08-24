@@ -6,11 +6,13 @@ function getInitial(value: string) {
   return value.trim().slice(0, 1).toUpperCase() || "U";
 }
 
-export function UserMenu({ email }: { email: string }) {
+export function UserMenu({ email, avatarUrl }: { email: string; avatarUrl?: string }) {
   return (
     <div className="user-menu">
+      <Link className="header-page-link" href="/">내새꾸</Link>
+      <Link className="header-page-link" href="/ongijonggi">옹기종기</Link>
       <Link className="account-initial-link" href="/account" title={email} aria-label="계정관리로 이동">
-        {getInitial(email)}
+        {avatarUrl ? <img src={avatarUrl} alt="" /> : getInitial(email)}
       </Link>
     </div>
   );

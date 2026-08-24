@@ -44,6 +44,29 @@ export async function signUpWithEmail(email: string, password: string) {
   });
 }
 
+export async function sendPasswordResetEmail(email: string) {
+  const { supabase, error } = getAuthClient();
+  if (error) return { data: {}, error };
+
+  return supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${location.origin}/reset-password`,
+  });
+}
+
+export async function updatePassword(password: string) {
+  const { supabase, error } = getAuthClient();
+  if (error) return { data: { user: null }, error };
+
+  return supabase.auth.updateUser({ password });
+}
+
+export async function updateNickname(name: string) {
+  const { supabase, error } = getAuthClient();
+  if (error) return { data: { user: null }, error };
+
+  return supabase.auth.updateUser({ data: { name } });
+}
+
 export async function signOut() {
   const { supabase, error } = getAuthClient();
   if (error) return { error };

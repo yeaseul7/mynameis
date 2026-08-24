@@ -32,6 +32,13 @@ export function validateRegistrationNumber(value: string) {
   return value && value.length !== 15 ? "동물등록번호는 숫자 15자리로 입력해 주세요." : "";
 }
 
+export function isDuplicateRegistrationNumberError(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  const code = "code" in error ? String(error.code ?? "") : "";
+  const message = "message" in error ? String(error.message ?? "") : "";
+  return code === "23505" && (message.includes("dogs_animal_registration_no_key") || message.includes("animal_registration_no"));
+}
+
 export function validateWeightKg(value: number | null, required = false) {
   if (value === null) return required ? "몸무게를 입력해 주세요." : "";
   return value <= 0 || value > 200 ? "몸무게는 0kg 초과 200kg 이하로 입력해 주세요." : "";
