@@ -40,14 +40,14 @@ export function OngijonggiPage() {
   }, [cursor]);
 
   return <div className="logged-home ongijonggi-page">
-    {(loading || dogs.length > 0) && <section className="home-section nearby-lost-section recent-lost-section" aria-labelledby="recent-lost-title" aria-busy={loading}>
+    <section className="home-section nearby-lost-section recent-lost-section" aria-labelledby="recent-lost-title" aria-busy={loading}>
       <div className="section-heading"><h1 id="recent-lost-title">주인을 찾아주세요</h1></div>
-      <div className="nearby-lost-grid">{loading ? Array.from({ length: LOST_DOGS_PAGE_SIZE }, (_, index) => <div className="recent-lost-skeleton skeleton-card" key={index}><div className="skeleton-line" /><div className="skeleton-line" /></div>) : dogs.map((dog) => <Link className="nearby-lost-card" href={`/share/${dog.token}`} key={dog.id}><div className="nearby-lost-photo">{dog.photoUrl ? <Image src={dog.photoUrl} alt={`${dog.name} 사진`} fill sizes="(max-width:760px) 46vw, 240px" quality={66} /> : <span className="nearby-lost-placeholder" aria-hidden>{dog.name.slice(0, 1)}</span>}<b className="nearby-lost-badge">실종</b><div className="nearby-lost-copy"><h3>{dog.name}</h3><p><RiMapPinLine aria-hidden="true" />{dog.lostLocation || "위치 정보 없음"}</p></div></div></Link>)}</div>
-      {!loading && <nav className="recent-lost-pagination" aria-label="실종 카드 페이지 이동">
+      {loading || dogs.length > 0 ? <div className="nearby-lost-grid">{loading ? Array.from({ length: LOST_DOGS_PAGE_SIZE }, (_, index) => <div className="recent-lost-skeleton skeleton-card" key={index}><div className="skeleton-line" /><div className="skeleton-line" /></div>) : dogs.map((dog) => <Link className="nearby-lost-card" href={`/share/${dog.token}`} key={dog.id}><div className="nearby-lost-photo">{dog.photoUrl ? <Image src={dog.photoUrl} alt={`${dog.name} 사진`} fill sizes="(max-width:760px) 46vw, 240px" quality={66} /> : <span className="nearby-lost-placeholder" aria-hidden>{dog.name.slice(0, 1)}</span>}<b className="nearby-lost-badge">실종</b><div className="nearby-lost-copy"><h3>{dog.name}</h3><p><RiMapPinLine aria-hidden="true" />{dog.lostLocation || "위치 정보 없음"}</p></div></div></Link>)}</div> : <p className="recent-lost-empty">실종된 친구가 존재하지 않아요!! <span aria-hidden="true">🌼</span></p>}
+      {!loading && dogs.length > 0 && <nav className="recent-lost-pagination" aria-label="실종 카드 페이지 이동">
         <button type="button" onClick={() => setCursor(Math.max(0, cursor - LOST_DOGS_PAGE_SIZE))} disabled={loading || cursor === 0}>&lt; 이전</button>
         <button type="button" onClick={() => { if (nextCursor !== null) setCursor(nextCursor); }} disabled={loading || nextCursor === null}>다음 &gt;</button>
       </nav>}
-    </section>}
+    </section>
     <CommunitySection />
   </div>;
 }

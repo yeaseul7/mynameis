@@ -56,7 +56,7 @@ function CommunityFeedContent({ post, imageLineCount = 0 }: { post: CommunityPos
   const rich = post.content_format === "RICH_HTML";
   return <div className={`community-feed-body${expanded ? " is-expanded" : " is-collapsed"}`}>
     <div ref={contentRef} className="community-feed-content">{rich ? <div className="community-rich-content" dangerouslySetInnerHTML={{ __html: post.content ?? "" }} /> : <div className="community-feed-plain-text">{post.content}</div>}</div>
-    {overflowing && !expanded && <button type="button" className="community-feed-more" onClick={(event) => { event.stopPropagation(); setExpanded(true); }} aria-expanded="false">더보기</button>}
+    {overflowing && !expanded && <button type="button" className="community-feed-more" onClick={(event) => { event.stopPropagation(); setExpanded(true); }} aria-expanded="false">...더보기</button>}
   </div>;
 }
 
