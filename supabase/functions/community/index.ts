@@ -1,7 +1,8 @@
 import { adminClient, errorResponse, handleOptions, HttpError, json, optionalUser, requireUser } from "../_shared/http.ts";
 
 function slugify(title: string) {
-  const base = title.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "").slice(0, 90) || "post";
+  const normalized = title.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "");
+  const base = Array.from(normalized).slice(0, 16).join("").replace(/-$/g, "") || "post";
   return `${base}-${crypto.randomUUID().slice(0, 8)}`;
 }
 
