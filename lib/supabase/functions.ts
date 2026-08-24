@@ -3,7 +3,13 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 type FunctionErrorContext = { json: () => Promise<unknown> };
 
 export async function invokeFunction<T>(name: string, body?: Record<string, unknown>): Promise<T> {
-  const { data, error } = await createBrowserSupabaseClient().functions.invoke(name, { body: body ?? {} });
+  const supabase = createBrowserSupabaseClient();
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+  const { data, error } = await supabase.functions.invoke(name, {
+    body: body ?? {},
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+  });
   if (!error) return data as T;
 
   let message = error.message;

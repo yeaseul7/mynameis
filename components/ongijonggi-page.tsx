@@ -9,7 +9,7 @@ import { CommunitySection } from "@/components/community-section";
 
 type RecentLostDog = { id: string; name: string; breed: string; lostLocation: string; lostAt: string; photoUrl: string | null; token: string };
 
-const LOST_DOGS_PAGE_SIZE = 6;
+const LOST_DOGS_PAGE_SIZE = 4;
 
 async function getRecentLostDogs(cursor: number) {
   return invokeFunction<{ dogs: RecentLostDog[]; nextCursor: number | null }>("friends", {

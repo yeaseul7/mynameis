@@ -3,11 +3,12 @@ import { useEffect } from "preact/hooks";
 import { AppShell } from "@/components/app-shell";
 import { Header } from "@/components/header";
 import { HomePage } from "./pages/home";
-import { LoginPage, NewPetPage, NewFriendPage, EditPetPage, AccountPage, AuthCallbackPage, ResetPasswordPage, OngijonggiRoute, CommunityWriteRoute } from "./pages/app-pages";
+import { LoginPage, NewPetPage, NewFriendPage, EditPetPage, AccountPage, AuthCallbackPage, ResetPasswordPage, OngijonggiRoute, CommunityWriteRoute, CommunityEditRoute } from "./pages/app-pages";
 import { SharePage } from "./pages/share";
 import TermsPage from "@/app/terms/page";
 import PrivacyPage from "@/app/privacy/page";
 import { CommunityPostPage } from "@/components/community-post-page";
+import { usePathname } from "next/navigation";
 import "@/app/globals.css";
 
 function SeoGuard() {
@@ -19,10 +20,11 @@ function SeoGuard() {
 }
 
 function App() {
-  const path = location.pathname;
+  const path = usePathname();
   const editMatch = path.match(/^\/pets\/([^/]+)\/edit$/);
   const shareMatch = path.match(/^\/share\/([^/]+)$/);
   const communityMatch = path.match(/^\/community\/([^/]+)$/);
+  const communityEditMatch = path.match(/^\/community\/([^/]+)\/edit$/);
   let page = <div className="route-error">페이지를 찾을 수 없어요.</div>;
   if (path === "/") page = <HomePage />;
   else if (path === "/login") page = <LoginPage />;
@@ -31,6 +33,7 @@ function App() {
   else if (path === "/account") page = <AccountPage />;
   else if (path === "/ongijonggi") page = <OngijonggiRoute />;
   else if (path === "/community/new") page = <CommunityWriteRoute />;
+  else if (communityEditMatch) page = <CommunityEditRoute slug={decodeURIComponent(communityEditMatch[1])} />;
   else if (path === "/pets/new") page = <NewPetPage />;
   else if (editMatch) page = <EditPetPage id={decodeURIComponent(editMatch[1])} />;
   else if (path === "/friends/new") page = <NewFriendPage />;

@@ -11,6 +11,7 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { invokeFunction } from "@/lib/supabase/functions";
 import { getDogsByOwner } from "@/lib/pets/service";
 import { FriendInviteForm } from "@/components/friend-invite-form";
+import { CopyAlert } from "@/components/copy-alert";
 import type { DogProfile } from "@/lib/dogs";
 import type { DogPublicLinkType } from "@/lib/pets/types";
 
@@ -52,14 +53,6 @@ function EmptyPets({ onAddFriend }: { onAddFriend: () => void }) {
       </section>
       <FriendSection empty onAddFriend={onAddFriend} />
     </>
-  );
-}
-
-function CopyAlert({ message }: { message: string }) {
-  if (!message) return null;
-  return createPortal(
-    <div className="copy-alert" role="status" aria-live="polite"><FaPaw aria-hidden="true" />{message}</div>,
-    document.body,
   );
 }
 

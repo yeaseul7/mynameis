@@ -1,5 +1,5 @@
-import { useEffect, useState } from "preact/hooks";
-import type { FormEvent } from "react";
+import { useEffect, useRef, useState } from "preact/hooks";
+import type { ChangeEvent, FormEvent } from "react";
 import type { User } from "@supabase/supabase-js";
 import { SocialLoginPanel } from "@/components/social-login-panel";
 import { PetRegistrationForm } from "@/components/pet-registration-form";
@@ -14,6 +14,8 @@ import type { DogProfile } from "@/lib/pets/types";
 import { RouteSkeleton } from "@/src/components/route-skeleton";
 import { OngijonggiPage } from "@/components/ongijonggi-page";
 import { CommunityWritePage, CommunityWriteSkeleton } from "@/components/community-write-page";
+import { updateUserAvatar } from "@/lib/storage/user-avatar";
+import { CopyAlert } from "@/components/copy-alert";
 
 export const LoginPage = () => <main className="login-page"><section className="login-card temp-login-card"><a className="login-contact" href="https://mail.google.com/mail/?view=cm&fs=1&to=sientobiz@gmail.com&su=mynameis%20문의" target="_blank" rel="noreferrer">문의하기</a><div className="login-intro"><a className="login-brand" href="/"><img src="/mynameis-logo.png" alt="mynameis" width="170" /></a><p>우리 아이의 다정한 이름표</p><h1>반가워요!</h1></div><SocialLoginPanel /></section></main>;
 export const NewPetPage = () => <Protected loading={<RouteSkeleton variant="pet-form" label="새꾸 등록 화면을 불러오고 있어요" />}>{user => <div className="pet-registration-page"><PetRegistrationForm userId={user.id} /></div>}</Protected>;
@@ -35,6 +37,11 @@ function AccountContent({ user }: { user: User }) {
   const [name, setName] = useState(initialName);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string>(user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? "");
+  const [avatarSaving, setAvatarSaving] = useState(false);
+  const [avatarMessage, setAvatarMessage] = useState("");
+  const [avatarNotice, setAvatarNotice] = useState("");
+  const avatarNoticeTimerRef = useRef<number | null>(null);
   const provider = user.app_metadata?.provider ?? "확인 중";
 
   async function saveNickname(event: FormEvent<HTMLFormElement>) {
@@ -48,12 +55,32 @@ function AccountContent({ user }: { user: User }) {
     setSaving(false);
   }
 
-  return <main className="account-page"><section className="account-panel"><div className="account-hero"><div className="account-avatar">{name.slice(0, 1).toUpperCase()}</div><div><p className="account-kicker">계정관리</p><h1>{name}님</h1><p>이름표와 공유 링크를 관리하는 보호자 계정이에요.</p></div></div><form className="account-nickname-form" onSubmit={saveNickname}><div><label htmlFor="account-nickname">닉네임</label><p>서비스에서 표시할 보호자 이름이에요.</p></div><div className="account-nickname-control"><input id="account-nickname" name="nickname" defaultValue={name} minLength={2} maxLength={20} autoComplete="nickname" required /><button disabled={saving}>{saving ? "저장 중..." : "변경"}</button></div>{message && <p className="account-nickname-message" role="status">{message}</p>}</form><div className="account-info-grid"><article><span>이메일</span><strong>{user.email ?? "등록된 이메일 없음"}</strong></article><article><span>로그인 방식</span><strong>{provider}</strong></article><article><span>가입일</span><strong>{new Intl.DateTimeFormat("ko-KR", { dateStyle: "long" }).format(new Date(user.created_at))}</strong></article></div><div className="account-actions"><div className="account-main-actions"><a className="account-primary-link" href="/">내 이름표 보기</a><AccountSignOutButton /></div><AccountDeleteButton /></div></section></main>;
+  async function changeAvatar(event: ChangeEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!file) return;
+    setAvatarSaving(true); setAvatarMessage("");
+    try {
+      const url = await updateUserAvatar(createBrowserSupabaseClient(), user, file);
+      setAvatarUrl(url);
+      setAvatarNotice("프로필 사진을 변경했어요.");
+      if (avatarNoticeTimerRef.current !== null) window.clearTimeout(avatarNoticeTimerRef.current);
+      avatarNoticeTimerRef.current = window.setTimeout(() => setAvatarNotice(""), 1800);
+    } catch (error) {
+      setAvatarMessage(error instanceof Error && error.message.includes("이미지") ? error.message : "프로필 사진을 변경하지 못했어요. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setAvatarSaving(false);
+      input.value = "";
+    }
+  }
+
+  return <main className="account-page"><CopyAlert message={avatarNotice} /><section className="account-panel"><div className="account-hero"><div className="account-avatar-editor"><div className={`account-avatar${avatarUrl ? " has-image" : ""}`}>{avatarUrl ? <img src={avatarUrl} alt={`${name} 프로필`} /> : name.slice(0, 1).toUpperCase()}</div><label className="account-avatar-button" htmlFor="account-avatar-input">{avatarSaving ? "업로드 중" : "사진 변경"}</label><input id="account-avatar-input" className="account-avatar-input" type="file" accept="image/jpeg,image/png,image/webp" onChange={changeAvatar} disabled={avatarSaving} /></div><div><p className="account-kicker">계정관리</p><h1>{name}님</h1><p>이름표와 공유 링크를 관리하는 보호자 계정이에요.</p>{avatarMessage && <p className="account-avatar-message" role="alert">{avatarMessage}</p>}</div></div><form className="account-nickname-form" onSubmit={saveNickname}><div><label htmlFor="account-nickname">닉네임</label><p>서비스에서 표시할 보호자 이름이에요.</p></div><div className="account-nickname-control"><input id="account-nickname" name="nickname" defaultValue={name} minLength={2} maxLength={20} autoComplete="nickname" required /><button disabled={saving}>{saving ? "저장 중..." : "변경"}</button></div>{message && <p className="account-nickname-message" role="status">{message}</p>}</form><div className="account-info-grid"><article><span>이메일</span><strong>{user.email ?? "등록된 이메일 없음"}</strong></article><article><span>로그인 방식</span><strong>{provider}</strong></article><article><span>가입일</span><strong>{new Intl.DateTimeFormat("ko-KR", { dateStyle: "long" }).format(new Date(user.created_at))}</strong></article></div><div className="account-actions"><div className="account-main-actions"><a className="account-primary-link" href="/">내 이름표 보기</a><AccountSignOutButton /></div><AccountDeleteButton /></div></section></main>;
 }
 
 export const AccountPage = () => <Protected>{user => <AccountContent user={user} />}</Protected>;
 export const OngijonggiRoute = () => <Protected>{() => <OngijonggiPage />}</Protected>;
 export const CommunityWriteRoute = () => <Protected loading={<CommunityWriteSkeleton />}>{() => <CommunityWritePage />}</Protected>;
+export const CommunityEditRoute = ({ slug }: { slug: string }) => <Protected loading={<CommunityWriteSkeleton />}>{() => <CommunityWritePage editSlug={slug} />}</Protected>;
 
 export function AuthCallbackPage() {
   useEffect(() => { createBrowserSupabaseClient().auth.getSession().finally(() => location.replace("/")); }, []);
