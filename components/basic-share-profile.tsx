@@ -143,9 +143,9 @@ export function BasicShareProfile({
     lostLocationNeighborhood: care?.lostLocationNeighborhood ?? null,
     lostLocationDetail: care?.lostLocationDetail ?? null,
   });
-  const [activeTab, setActiveTab] = useState<"lost" | "care">(mode === "lost" ? "lost" : "care");
   const lostLocationLabel = [lostSnapshot.lostLocationDistrict, lostSnapshot.lostLocationNeighborhood, lostSnapshot.lostLocationDetail].filter(Boolean).join(" ") || lostSnapshot.lostLocationAddress || "미입력";
   const hasLostReportDetails = Boolean(lostSnapshot.lostAt || lostSnapshot.lostLocationDistrict || lostSnapshot.lostLocationNeighborhood || lostSnapshot.lostLocationDetail || lostSnapshot.lostLocationAddress);
+  const [activeTab, setActiveTab] = useState<"lost" | "care">(mode === "lost" || (mode === "basic" && hasLostReportDetails) ? "lost" : "care");
   const primaryContact = care?.emergencyContact1?.replace(/[^\d+]/g, "") ?? "";
   const instagramUsername = normalizeInstagramUsername(dog.instagramUsername);
   const instagramUrl = instagramUsername ? `https://www.instagram.com/${encodeURIComponent(instagramUsername)}/` : "";
@@ -296,7 +296,7 @@ export function BasicShareProfile({
     setLocationShareStatus("sharing");
     try {
       await invokeFunction("share", {
-        action: "found-location", slug, latitude: selectedReportLocation.latitude,
+        action: "found-location", slug: links.LOST ?? slug, latitude: selectedReportLocation.latitude,
         longitude: selectedReportLocation.longitude, accuracy: selectedReportLocation.accuracy,
         note: locationReportNote,
       });
@@ -573,7 +573,7 @@ export function BasicShareProfile({
         <div className="basic-share-overlay">
           <div className="basic-share-header">
             <a className="basic-share-brand" href="/" aria-label="mynameis 홈">
-              <Image className="wordmark-logo" src="/mynameis-logo-240.png" alt="mynameis" width={58} height={20} />
+              <Image className="wordmark-logo" src="/mynameis-logo-240.png" alt="mynameis" width={60} height={20} />
             </a>
             <button className="share-print-button" type="button" aria-label="인쇄" title="인쇄" onClick={() => void savePoster()}><RiPrinterLine aria-hidden="true" /></button>
           </div>
@@ -610,8 +610,8 @@ export function BasicShareProfile({
         {canEdit ? (
           <div className="basic-info-tabs" role="tablist" aria-label={`${dog.name} 추가 정보`} data-active={activeTab}>
             <span className="basic-info-tab-slider" aria-hidden="true" />
-            {links.LOST ? <Link role="tab" aria-selected={activeTab === "lost"} href={`/share/${links.LOST}`} onClick={(event) => switchInfoTab(event, "lost", links.LOST!)}><RiAlarmWarningLine aria-hidden="true" />실종</Link> : null}
             {links.CARE ? <Link role="tab" aria-selected={activeTab === "care"} href={`/share/${links.CARE}`} onClick={(event) => switchInfoTab(event, "care", links.CARE!)}><RiHeart3Line aria-hidden="true" />돌봄</Link> : null}
+            {links.LOST ? <Link role="tab" aria-selected={activeTab === "lost"} href={`/share/${links.LOST}`} onClick={(event) => switchInfoTab(event, "lost", links.LOST!)}><RiAlarmWarningLine aria-hidden="true" />실종</Link> : null}
           </div>
         ) : null}
         <section className="basic-tab-panel">

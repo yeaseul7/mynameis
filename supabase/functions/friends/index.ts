@@ -65,6 +65,11 @@ Deno.serve(async (request) => {
       const { data: friend } = await admin.from("dog_friends").select("friend_dog_id").eq("owner_id", user.id).eq("friend_dog_id", dogId).maybeSingle();
       if (!friend) throw new HttpError(404, "등록된 친구가 아니에요.");
       const { data: dog } = await admin.from("dogs").select("id,owner_id").eq("id", dogId).maybeSingle(); if (!dog) throw new HttpError(404, "친구 정보를 찾지 못했어요.");
+      const { data: lostProfile } = await admin.from("dog_care_profiles").select("lost_at").eq("dog_id", dogId).maybeSingle();
+      if (lostProfile?.lost_at) {
+        const { data: lostLink } = await admin.from("dog_public_links").select("token").eq("dog_id", dogId).eq("type", "LOST").eq("is_active", true).is("revoked_at", null).or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`).maybeSingle();
+        if (lostLink) return json(lostLink);
+      }
       const { data: existing } = await admin.from("dog_public_links").select("token").eq("dog_id", dogId).eq("type", "PROFILE").eq("is_active", true).is("revoked_at", null).maybeSingle();
       if (existing) return json(existing);
       const value = `pet_p_${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`;
