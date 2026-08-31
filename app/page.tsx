@@ -72,7 +72,7 @@ export function GuestHome() {
         <Link className="minimal-cta" href="/login">무료로 시작하기 <span aria-hidden="true">›</span></Link>
       </section>
 
-      <footer className="guest-footer"><div className="landing-inner"><Link href="/" aria-label="mynameis 홈"><Image src="/mynameis-logo-240.png" alt="mynameis" width={82} height={28} /></Link><nav aria-label="하단 링크"><a href="/terms">이용약관</a><a href="/privacy">개인정보처리방침</a><a href="mailto:sientobiz@gmail.com">문의하기</a></nav><p>© mynameis</p></div></footer>
+      <footer className="guest-footer"><div className="landing-inner"><Link href="/" aria-label="mynameis 홈"><Image src="/mynameis-logo-240.png" alt="mynameis" width={84} height={28} /></Link><nav aria-label="하단 링크"><a href="/terms">이용약관</a><a href="/privacy">개인정보처리방침</a><a href="mailto:sientobiz@gmail.com">문의하기</a></nav><p>© mynameis</p></div></footer>
     </main>
   );
 }

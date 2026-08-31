@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import QRCode from "qrcode";
 import { BasicShareProfile } from "@/components/basic-share-profile";
 import type { GuestbookEntry } from "@/components/guestbook";
 import type { FoundLocationReport } from "@/components/found-location-reports";
@@ -7,6 +6,7 @@ import type { DogProfile, DogPublicLinkType } from "@/lib/pets/types";
 import { getDogByPublicToken } from "@/lib/pets/service";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { RouteSkeleton } from "@/src/components/route-skeleton";
+import { createBrandedQrDataUrl } from "@/lib/qr/create-branded-qr";
 
 type Data = { dog: DogProfile; mode: "basic" | "care" | "lost"; canEdit: boolean; canWriteGuestbook: boolean; links: Partial<Record<DogPublicLinkType, string>>; entries: GuestbookEntry[]; reports: FoundLocationReport[] };
 
@@ -36,9 +36,15 @@ export function SharePage({ slug }: { slug: string }) {
   const [data, setData] = useState<Data | null | undefined>();
   const [qr, setQr] = useState<string>();
   useEffect(() => { loadShare(slug).then(setData); }, [slug]);
-  useEffect(() => { if (new URLSearchParams(location.search).get("view") === "qr") QRCode.toDataURL(location.origin + "/share/" + slug, { width: 360, margin: 2, errorCorrectionLevel: "H" }).then(setQr); }, [slug]);
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get("view") !== "qr" || !data) return;
+    createBrandedQrDataUrl(`${location.origin}/share/${slug}`, data.mode === "lost" ? "lost" : "care").then(setQr);
+  }, [data, slug]);
   if (data === undefined) return <RouteSkeleton variant="share" label="이름표를 불러오고 있어요" />;
   if (!data) return <div className="shared-page"><section className="shared-profile"><a className="share-brand" href="/"><img src="/mynameis-logo.png" alt="mynameis" width="72" /></a><h1>이름표를 찾을 수 없어요</h1><p>공유 링크가 만료되었거나 접근할 수 없는 프로필이에요.</p></section></div>;
-  if (new URLSearchParams(location.search).get("view") === "qr") return <div className="shared-page qr-page"><section className="qr-card"><span>{data.mode === "lost" ? "실종 이름표" : "관리 이름표"}</span><h1>{data.mode === "lost" ? "실종 QR" : "관리 QR"}</h1><p>휴대폰 카메라로 스캔하면 공유 페이지가 열립니다.</p>{qr && <img src={qr} alt="공유 QR 코드" width="360" height="360" />}<a className="qr-download-link" href={qr} download="mynameis-qr.png">사진으로 저장하기</a><a href={`/share/${slug}`}>공유 페이지 확인</a></section></div>;
+  if (new URLSearchParams(location.search).get("view") === "qr") {
+    const isLost = data.mode === "lost";
+    return <div className={`shared-page qr-page ${isLost ? "lost" : "care"}`}><section className="qr-card"><span>{isLost ? "실종" : "돌봄"} 이름표</span><h1>{data.dog.name}의 {isLost ? "실종" : "돌봄"} QR</h1><p>휴대폰 카메라로 스캔하면 공유 페이지가 열립니다.</p><div className="branded-qr-frame">{qr ? <img src={qr} alt={`${isLost ? "실종" : "돌봄"} 공유 QR 코드`} width="360" height="360" /> : <div className="branded-qr-loading" aria-label="QR 생성 중" />}</div><a className="qr-download-link" href={qr} download={`mynameis-${isLost ? "lost" : "care"}-qr.png`} aria-disabled={!qr}>사진으로 저장하기</a><a href={`/share/${slug}`}>공유 페이지 확인</a></section></div>;
+  }
   return <div className="shared-page basic-shared-page"><BasicShareProfile dog={data.dog} mode={data.mode} canEdit={data.canEdit} links={data.links} slug={slug} guestbookEntries={data.entries} canWriteGuestbook={data.canWriteGuestbook} foundLocationReports={data.reports} kakaoMapKey={import.meta.env.VITE_KAKAO_JAVASCRIPT_KEY} /></div>;
 }
