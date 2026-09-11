@@ -6,8 +6,8 @@ type JoinOptions = { petId?: string; petName?: string };
 type MoveMessage = { x?: number; y?: number; direction?: string };
 type ChatMessage = { message?: string };
 
-const MAP_WIDTH = 1000;
-const MAP_HEIGHT = 600;
+const MAP_WIDTH = 2400;
+const MAP_HEIGHT = 1600;
 const PLAYER_RADIUS = 22;
 const DUPLICATE_CODE = 4001;
 
@@ -55,8 +55,8 @@ export class WorldRoom extends Room<WorldState> {
     player.userId = client.sessionId;
     player.petId = auth.petId;
     player.petName = auth.petName;
-    player.x = 100 + Math.random() * 800;
-    player.y = 100 + Math.random() * 400;
+    player.x = 1120 + Math.random() * 160;
+    player.y = 720 + Math.random() * 160;
     this.state.players.set(client.sessionId, player);
     this.sessionsByPetId.set(auth.petId, client);
   }

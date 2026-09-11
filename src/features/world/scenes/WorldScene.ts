@@ -10,6 +10,11 @@ type PlayerView = {
   direction: string;
 };
 
+const MAP_WIDTH = 2400;
+const MAP_HEIGHT = 1600;
+const VIEW_WIDTH = 1000;
+const VIEW_HEIGHT = 600;
+
 export class WorldScene extends Phaser.Scene {
   private players = new Map<string, PlayerView>();
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -17,6 +22,7 @@ export class WorldScene extends Phaser.Scene {
   private lastSentAt = 0;
   private lastSentX = 0;
   private lastSentY = 0;
+  private minimap?: Phaser.GameObjects.Graphics;
 
   constructor(
     private room: Room,
@@ -26,6 +32,8 @@ export class WorldScene extends Phaser.Scene {
 
   create() {
     this.drawPark();
+    this.cameras.main.setBounds(0, 0, MAP_WIDTH, MAP_HEIGHT);
+    this.physics.world.setBounds(0, 0, MAP_WIDTH, MAP_HEIGHT);
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.wasd = this.input.keyboard!.addKeys({ up: "W", down: "S", left: "A", right: "D" }) as typeof this.wasd;
     this.onReady();
@@ -46,7 +54,7 @@ export class WorldScene extends Phaser.Scene {
     body.setInteractive({ useHandCursor: sessionId !== this.room.sessionId });
     if (sessionId !== this.room.sessionId) body.on("pointerdown", () => this.onProfile({ petId: player.petId, petName: player.petName }));
     this.players.set(sessionId, { body, targetX: player.x, targetY: player.y, direction: player.direction });
-    if (sessionId === this.room.sessionId) { this.lastSentX = player.x; this.lastSentY = player.y; }
+    if (sessionId === this.room.sessionId) { this.lastSentX = player.x; this.lastSentY = player.y; this.cameras.main.startFollow(body, true, 0.1, 0.1); }
   }
 
   updatePlayer(sessionId: string, player: PlayerSnapshot) {
@@ -85,8 +93,8 @@ export class WorldScene extends Phaser.Scene {
     if (this.cursors.down.isDown || this.wasd.down.isDown) dy++;
     if (dx || dy) {
       const length = Math.hypot(dx, dy);
-      local.body.x = Phaser.Math.Clamp(local.body.x + dx / length * 180 * seconds, 22, 978);
-      local.body.y = Phaser.Math.Clamp(local.body.y + dy / length * 180 * seconds, 22, 578);
+      local.body.x = Phaser.Math.Clamp(local.body.x + dx / length * 220 * seconds, 22, MAP_WIDTH - 22);
+      local.body.y = Phaser.Math.Clamp(local.body.y + dy / length * 220 * seconds, 22, MAP_HEIGHT - 22);
       local.direction = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? "left" : "right") : (dy < 0 ? "up" : "down");
       if (time - this.lastSentAt >= 50 && Math.hypot(local.body.x - this.lastSentX, local.body.y - this.lastSentY) >= 1) {
         this.room.send("move", { x: local.body.x, y: local.body.y, direction: local.direction });
@@ -100,82 +108,89 @@ export class WorldScene extends Phaser.Scene {
       }
       if (view.bubble) { view.bubble.x = view.body.x; view.bubble.y = view.body.y - 54; view.bubble.scaleX = 1; }
     }
+    this.drawMinimap();
   }
 
   private drawPark() {
     const graphics = this.add.graphics();
+    graphics.fillStyle(0xbfe3f3).fillRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+    graphics.fillStyle(0x9ed27e).fillRoundedRect(24, 24, MAP_WIDTH - 48, MAP_HEIGHT - 48, 42);
+    graphics.lineStyle(10, 0x5f7658).strokeRoundedRect(24, 24, MAP_WIDTH - 48, MAP_HEIGHT - 48, 42);
 
-    // 보라매공원의 넓은 녹지와 중앙 대운동장을 단순화한 배치다.
-    graphics.fillStyle(0xd9ecff).fillRect(0, 0, 1000, 600);
-    graphics.fillStyle(0xa9d989).fillRoundedRect(12, 12, 976, 576, 28);
-    graphics.lineStyle(6, 0x655875, 1).strokeRoundedRect(12, 12, 976, 576, 28);
+    graphics.lineStyle(2, 0x86bd70, 0.3);
+    for (let x = 40; x < MAP_WIDTH; x += 64) graphics.lineBetween(x, 30, x, MAP_HEIGHT - 30);
+    for (let y = 40; y < MAP_HEIGHT; y += 64) graphics.lineBetween(30, y, MAP_WIDTH - 30, y);
 
-    // 잔디에 작은 격자 무늬를 넣어 미니룸 바닥 같은 느낌을 만든다.
-    graphics.lineStyle(1, 0x8fc779, 0.35);
-    for (let x = 28; x < 990; x += 32) graphics.lineBetween(x, 18, x, 582);
-    for (let y = 28; y < 590; y += 32) graphics.lineBetween(18, y, 982, y);
+    // 중앙 광장에서 네 구역으로 이어지는 산책로.
+    graphics.lineStyle(76, 0x756b82, 0.22);
+    graphics.lineBetween(1200, 800, 480, 800); graphics.lineBetween(1200, 800, 1920, 800);
+    graphics.lineBetween(1200, 800, 1200, 300); graphics.lineBetween(1200, 800, 1200, 1320);
+    graphics.lineStyle(58, 0xf3dfb9);
+    graphics.lineBetween(1200, 800, 480, 800); graphics.lineBetween(1200, 800, 1920, 800);
+    graphics.lineBetween(1200, 800, 1200, 300); graphics.lineBetween(1200, 800, 1200, 1320);
 
-    // 외곽 순환 산책로와 공원을 가로지르는 주요 보행로.
-    graphics.lineStyle(42, 0x897b98, 0.35);
-    graphics.strokeRoundedRect(38, 38, 924, 524, 105);
-    graphics.lineStyle(34, 0xffe6bb, 1);
-    graphics.strokeRoundedRect(38, 38, 924, 524, 105);
-    graphics.lineStyle(36, 0x897b98, 0.35);
-    graphics.lineBetween(55, 355, 945, 355);
-    graphics.lineBetween(705, 55, 705, 545);
-    graphics.lineStyle(28, 0xffe6bb, 1);
-    graphics.lineBetween(55, 355, 945, 355);
-    graphics.lineBetween(705, 55, 705, 545);
+    this.drawPlaza(graphics);
+    this.drawPlayground(graphics);
+    this.drawParkZone(graphics);
+    this.drawFoodCourt(graphics);
+    this.drawGarden(graphics);
 
-    // 중앙 대운동장과 러닝 트랙.
-    graphics.fillStyle(0x655875, 0.35).fillRoundedRect(274, 110, 403, 222, 104);
-    graphics.fillStyle(0xe79091).fillRoundedRect(278, 105, 395, 220, 104);
-    graphics.fillStyle(0xffc7ad).fillRoundedRect(289, 116, 373, 198, 94);
-    graphics.lineStyle(3, 0xf2ead1, 0.9);
-    graphics.strokeRoundedRect(300, 127, 351, 176, 84);
-    graphics.fillStyle(0xaee17f).fillRoundedRect(318, 143, 315, 144, 70);
-    graphics.lineStyle(2, 0xffffff, 0.6);
-    graphics.lineBetween(475, 144, 475, 286);
-    graphics.strokeCircle(475, 215, 31);
+    for (let x = 90; x <= 2310; x += 115) { this.drawTree(x, 82 + (x % 3) * 8, 0.9); this.drawTree(x, 1510 - (x % 4) * 7, 0.9); }
+    for (let y = 190; y <= 1410; y += 120) { this.drawTree(82 + (y % 3) * 7, y, 0.9); this.drawTree(2310 - (y % 4) * 6, y, 0.9); }
 
-    // 남서쪽 연못과 수변 산책로.
-    graphics.fillStyle(0x655875, 0.25).fillEllipse(185, 432, 220, 155);
-    graphics.fillStyle(0xffe6bb).fillEllipse(181, 426, 215, 154);
-    graphics.fillStyle(0x75cdec).fillEllipse(181, 426, 182, 125);
-    graphics.fillStyle(0xa9e6f7).fillEllipse(157, 408, 78, 43);
-    graphics.fillStyle(0xe5dcc0).fillRoundedRect(116, 418, 130, 12, 5);
+    this.add.text(18, VIEW_HEIGHT - 18, "⌨ WASD / 방향키  ·  우측 상단 전체 지도", { fontFamily: "monospace", fontSize: "14px", color: "#51465e", backgroundColor: "#fff9f0e8", padding: { x: 8, y: 5 } }).setOrigin(0, 1).setScrollFactor(0).setDepth(110);
+    this.minimap = this.add.graphics().setScrollFactor(0).setDepth(105);
+  }
 
-    // 남동쪽 어린이 정원과 작은 광장.
-    graphics.fillStyle(0x655875, 0.25).fillCircle(812, 460, 75);
-    graphics.fillStyle(0xffd18a).fillCircle(807, 455, 72);
-    graphics.fillStyle(0xffefd0).fillCircle(807, 455, 57);
-    graphics.fillStyle(0xd9896d).fillCircle(780, 441, 12);
-    graphics.fillStyle(0xe7bc51).fillCircle(820, 468, 14);
-    graphics.fillStyle(0x73a7c7).fillRoundedRect(835, 424, 29, 18, 7);
+  private zoneLabel(x: number, y: number, title: string, subtitle: string) {
+    this.add.text(x, y, `${title}\n${subtitle}`, { align: "center", fontFamily: "monospace", fontSize: "22px", color: "#4f425c", fontStyle: "bold", backgroundColor: "#fffaf0dd", padding: { x: 14, y: 8 } }).setOrigin(0.5).setDepth(4);
+  }
 
-    // 북쪽 시설 구역.
-    for (const [x, width] of [[110, 68], [192, 58], [770, 68], [850, 76]] as const) {
-      graphics.fillStyle(0x655875, 0.25).fillRoundedRect(x + 4, 70, width, 34, 4);
-      graphics.fillStyle(0xcdb9ee).fillRoundedRect(x, 66, width, 34, 4);
-      graphics.fillStyle(0xfff4c7).fillRect(x + 7, 72, width - 14, 9);
-    }
+  private drawPlaza(g: Phaser.GameObjects.Graphics) {
+    g.fillStyle(0x72667d, 0.25).fillCircle(1207, 807, 235); g.fillStyle(0xf2d6a5).fillCircle(1200, 800, 225);
+    g.lineStyle(3, 0xd3b885, 0.7); for (let r = 55; r < 215; r += 42) g.strokeCircle(1200, 800, r);
+    g.fillStyle(0x78cce4).fillCircle(1200, 800, 68); g.fillStyle(0xf7f0db).fillCircle(1200, 800, 45); g.fillStyle(0x78cce4).fillCircle(1200, 800, 28);
+    this.zoneLabel(1200, 1010, "중앙 광장", "PLAZA");
+  }
 
-    // 나무 군락: 운동장 가장자리와 외곽에 연속된 수목선을 만든다.
-    const trees = [
-      [66, 83], [110, 57], [158, 56], [216, 68], [265, 62], [731, 64], [786, 51], [842, 54], [902, 74], [946, 116],
-      [69, 173], [70, 244], [64, 315], [59, 413], [76, 496], [116, 540], [202, 548], [278, 548], [356, 550],
-      [435, 548], [525, 548], [614, 545], [733, 548], [817, 543], [903, 520], [946, 457], [946, 273], [949, 198],
-      [256, 124], [254, 184], [253, 249], [273, 311], [691, 112], [691, 174], [691, 246], [678, 311],
-      [324, 86], [378, 79], [431, 78], [489, 78], [545, 79], [605, 84],
-      [313, 341], [369, 339], [425, 339], [483, 339], [542, 339], [599, 338], [654, 340],
-      [324, 400], [374, 434], [339, 477], [442, 418], [505, 461], [580, 410], [626, 468],
-    ] as const;
-    trees.forEach(([x, y], index) => this.drawTree(x, y, 0.78 + (index % 3) * 0.1));
+  private drawPlayground(g: Phaser.GameObjects.Graphics) {
+    g.fillStyle(0x655875, 0.2).fillRoundedRect(130, 550, 650, 500, 70); g.fillStyle(0x79c79a).fillRoundedRect(120, 540, 650, 500, 70);
+    g.fillStyle(0xf0b06f).fillRoundedRect(210, 635, 480, 300, 45); g.fillStyle(0x6ea4d1).fillRoundedRect(260, 700, 105, 38, 12); g.fillStyle(0xe76968).fillCircle(540, 745, 55);
+    g.lineStyle(12, 0xf4db72); g.lineBetween(430, 670, 430, 890); g.lineBetween(390, 710, 470, 710); g.strokeCircle(430, 790, 72);
+    this.zoneLabel(445, 585, "놀이터 존", "PLAYGROUND");
+  }
 
-    this.add.text(475, 210, "BORAMAE PLAY GROUND", { fontFamily: "monospace", fontSize: "16px", color: "#526741", fontStyle: "bold" }).setOrigin(0.5).setAlpha(0.72);
-    this.add.text(181, 426, "POND", { fontFamily: "monospace", fontSize: "14px", color: "#effcff", fontStyle: "bold" }).setOrigin(0.5);
-    this.add.text(807, 510, "KIDS GARDEN", { fontFamily: "monospace", fontSize: "12px", color: "#655875", fontStyle: "bold" }).setOrigin(0.5);
-    this.add.text(18, 570, "⌨ WASD / 방향키", { fontFamily: "monospace", fontSize: "14px", color: "#51465e", backgroundColor: "#fff9f0dd", padding: { x: 8, y: 5 } }).setDepth(8);
+  private drawParkZone(g: Phaser.GameObjects.Graphics) {
+    g.fillStyle(0xf2ddb8).fillEllipse(1930, 800, 760, 470); g.fillStyle(0xa9dc82).fillEllipse(1930, 800, 690, 400);
+    g.lineStyle(34, 0x65b7c9); g.strokeEllipse(1930, 800, 625, 335); g.lineStyle(3, 0xeafcff, 0.8); g.strokeEllipse(1930, 800, 625, 335);
+    g.fillStyle(0x72cce5).fillEllipse(1930, 800, 280, 145); g.fillStyle(0xf6e1b5).fillRoundedRect(1790, 790, 280, 18, 7);
+    this.zoneLabel(1930, 580, "공원 존", "PARK & TRACK");
+  }
+
+  private drawFoodCourt(g: Phaser.GameObjects.Graphics) {
+    g.fillStyle(0xecc58c).fillRoundedRect(875, 90, 650, 360, 48);
+    for (const [x, color] of [[940, 0xe66f6f], [1115, 0x6ba9d2], [1290, 0xe8b94f]] as const) { g.fillStyle(0xfff7e5).fillRoundedRect(x, 180, 135, 135, 12); g.fillStyle(color).fillRect(x, 180, 135, 30); g.fillStyle(0x6f5a4d).fillRect(x + 18, 240, 99, 12); }
+    for (const x of [960, 1120, 1280, 1445]) { g.fillStyle(0xf8efd8).fillCircle(x, 370, 24); g.fillStyle(0x8b6f58).fillRect(x - 4, 370, 8, 35); }
+    this.zoneLabel(1200, 130, "푸드코트", "FOOD COURT");
+  }
+
+  private drawGarden(g: Phaser.GameObjects.Graphics) {
+    g.fillStyle(0x75cdec).fillEllipse(1200, 1320, 420, 260); g.fillStyle(0xa9e6f7).fillEllipse(1150, 1280, 155, 80); g.fillStyle(0xf2ddb8).fillRoundedRect(995, 1310, 410, 22, 8);
+    for (const [x, y, color] of [[1010, 1170, 0xf28a9d], [1110, 1130, 0xf2d06b], [1290, 1140, 0xb28add], [1400, 1200, 0xf28a9d]] as const) g.fillStyle(color).fillCircle(x, y, 25);
+    this.zoneLabel(1200, 1480, "피크닉 정원", "GARDEN");
+  }
+
+  private drawMinimap() {
+    if (!this.minimap) return;
+    const g = this.minimap; const x = VIEW_WIDTH - 218; const y = 18; const w = 200; const h = 134;
+    g.clear(); g.fillStyle(0x42364e, 0.84).fillRoundedRect(x - 5, y - 5, w + 10, h + 10, 9); g.fillStyle(0xfaf5df, 0.96).fillRect(x, y, w, h);
+    const sx = w / MAP_WIDTH; const sy = h / MAP_HEIGHT;
+    g.fillStyle(0xf0b06f).fillRect(x + 120 * sx, y + 540 * sy, 650 * sx, 500 * sy);
+    g.fillStyle(0x65b7c9).fillEllipse(x + 1930 * sx, y + 800 * sy, 690 * sx, 400 * sy);
+    g.fillStyle(0xecc58c).fillRect(x + 875 * sx, y + 90 * sy, 650 * sx, 360 * sy);
+    g.fillStyle(0xf2d6a5).fillCircle(x + 1200 * sx, y + 800 * sy, 225 * sx);
+    for (const [id, view] of this.players) { g.fillStyle(id === this.room.sessionId ? 0xff4f68 : 0x655875).fillCircle(x + view.body.x * sx, y + view.body.y * sy, id === this.room.sessionId ? 4 : 2.5); }
+    g.lineStyle(2, 0xffffff, 0.9).strokeRect(x + this.cameras.main.scrollX * sx, y + this.cameras.main.scrollY * sy, VIEW_WIDTH * sx, VIEW_HEIGHT * sy);
   }
 
   private drawTree(x: number, y: number, scale: number) {
