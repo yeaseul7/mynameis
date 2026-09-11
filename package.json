@@ -1,30 +1,37 @@
 {
-  "name": "mynameis",
+  "name": "mynameis-world-mvp",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3004",
-    "build": "next build",
-    "start": "next start -p 3004",
-    "lint": "next lint",
+    "dev": "next dev -p 3000",
+    "dev:server": "tsx watch server/index.ts",
+    "dev:all": "concurrently -n web,realtime -c blue,green \"npm:dev\" \"npm:dev:server\"",
+    "build": "NEXT_DIST_DIR=.next-build next build",
+    "start": "next start -p 3000",
+    "server": "tsx server/index.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@supabase/ssr": "^0.6.1",
-    "@supabase/supabase-js": "^2.49.4",
-    "@types/qrcode": "^1.5.6",
-    "next": "^16.3.1",
-    "qrcode": "^1.5.4",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "react-icons": "^5.7.0"
+    "@colyseus/schema": "^3.0.0",
+    "@colyseus/ws-transport": "^0.16.0",
+    "@supabase/supabase-js": "^2.116.0",
+    "colyseus": "^0.16.0",
+    "colyseus.js": "^0.16.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "next": "^15.5.0",
+    "phaser": "^3.90.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
   },
   "devDependencies": {
-    "@types/node": "^22.13.14",
-    "@types/react": "^19.0.12",
-    "@types/react-dom": "^19.0.4",
-    "eslint": "^9.22.0",
-    "eslint-config-next": "^15.2.4",
-    "typescript": "^5.8.2"
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "concurrently": "^9.2.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.0"
   }
 }

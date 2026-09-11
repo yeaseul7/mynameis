@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /login
+Disallow: /auth/
+Disallow: /account
+Disallow: /pets/
+Disallow: /friends/
+Disallow: /share/
+Disallow: /api/
+
+Sitemap: https://www.mynameis.life/sitemap.xml

@@ -1,5 +1,10 @@
-.next
-node_modules
-.env*.local
+node_modules/
+.next/
+.next-build/
+supabase/.temp/
+_legacy-vite-app/supabase/.temp/
+dist/
 *.tsbuildinfo
-npm-debug.log*
+.env*
+!.env.example
+.DS_Store
